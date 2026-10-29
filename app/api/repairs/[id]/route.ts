@@ -62,7 +62,10 @@ export async function PATCH(
     return jsonOk(ticket);
   }
 
-  if (user!.role === "admin") {
+  if (user!.role === "admin" || ticket.status !== "delivered") {
+    if (ticket.status === "delivered" && user!.role !== "admin") {
+      return jsonOk(ticket);
+    }
     const fields = [
       "customerName",
       "customerPhone",
@@ -71,10 +74,22 @@ export async function PATCH(
       "issueDescription",
       "estimatedCostCents",
     ];
+    let changed = false;
     for (const f of fields) {
-      if (f in body) ticket.set(f, body[f]);
+      if (f in body) {
+        ticket.set(f, body[f]);
+        changed = true;
+      }
     }
-    await ticket.save();
+    if (changed) {
+      ticket.statusHistory.push({
+        status: ticket.status,
+        changedBy: new mongoose.Types.ObjectId(user!.id),
+        changedAt: new Date(),
+        note: "Intake details updated",
+      });
+      await ticket.save();
+    }
   }
 
   return jsonOk(ticket);

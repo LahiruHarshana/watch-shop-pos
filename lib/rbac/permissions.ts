@@ -4,6 +4,7 @@ export const adminOnlyPaths = [
   "/settings",
   "/users",
   "/inventory/adjustments",
+  "/inventory/categories",
   "/reports",
 ] as const;
 

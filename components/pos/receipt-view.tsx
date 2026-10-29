@@ -56,6 +56,29 @@ export function ReceiptView({ sale, settings }: { sale: Sale; settings: Settings
     window.print();
   }
 
+  async function shareReceipt() {
+    const pdfUrl = `${window.location.origin}/api/sales/${sale._id}/pdf`;
+    try {
+      const response = await fetch(pdfUrl);
+      if (!response.ok) throw new Error("pdf");
+      const file = new File([await response.blob()], `${sale.invoiceNumber}.pdf`, {
+        type: "application/pdf",
+      });
+      if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }))) {
+        await navigator.share({ title: sale.invoiceNumber, files: [file] });
+        return;
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+    }
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast.success("Receipt link copied. Use Download PDF if sharing files is unavailable.");
+    } catch {
+      toast.message("Use Download PDF to share this receipt.");
+    }
+  }
+
   async function voidSale() {
     if (!voidReason.trim()) {
       toast.error("Enter a reason to void this invoice");
@@ -81,10 +104,15 @@ export function ReceiptView({ sale, settings }: { sale: Sale; settings: Settings
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2 print:hidden">
         <Button onClick={printReceipt}>Print receipt</Button>
+        <Button variant="outline" onClick={shareReceipt}>Share</Button>
         <a href={`/api/sales/${sale._id}/pdf`} className={cn(buttonVariants({ variant: "outline" }))}>
           Download PDF
         </a>
       </div>
+      <p className="max-w-xl text-xs text-muted-foreground print:hidden">
+        Choose the shop paper width in Settings (58mm or 80mm), then use the browser print dialog.
+        Set margins to None and turn off headers and footers. Cancelling the dialog leaves this page unchanged.
+      </p>
       {isAdmin && sale.status !== "voided" && (
         <div className="space-y-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 print:hidden">
           <p className="text-sm font-medium">Void invoice</p>
@@ -101,7 +129,7 @@ export function ReceiptView({ sale, settings }: { sale: Sale; settings: Settings
       )}
       <article
         id="receipt"
-        className="receipt mx-auto bg-white p-4 text-black print:shadow-none"
+        className="receipt mx-auto overflow-hidden bg-white p-3 text-[11px] leading-snug text-black print:shadow-none"
         style={{ maxWidth: width }}
       >
         {settings.logoUrl && (
@@ -122,10 +150,12 @@ export function ReceiptView({ sale, settings }: { sale: Sale; settings: Settings
           {sale.lineItems.map((line, i) => (
             <li key={i}>
               <div className="flex justify-between gap-2">
-                <span>{line.name} ×{line.quantity}</span>
-                <span>{formatLkr(line.lineTotalCents)}</span>
+                <span className="min-w-0 break-words">{line.name} ×{line.quantity}</span>
+                <span className="shrink-0">{formatLkr(line.lineTotalCents)}</span>
               </div>
-              <span className="text-[10px] text-black/60">{line.sku}</span>
+              <p className="text-[10px] text-black/60">
+                {line.sku} · {formatLkr(line.unitPriceCents)} each
+              </p>
               {line.lineDiscount && (
                 <p className="text-[10px]">
                   Line discount{" "}
@@ -153,6 +183,20 @@ export function ReceiptView({ sale, settings }: { sale: Sale; settings: Settings
             <span>Total</span>
             <span>{formatLkr(sale.totalCents)}</span>
           </div>
+          {sale.payments[0] && (
+            <>
+              <div className="flex justify-between">
+                <span>Payment</span>
+                <span className="capitalize">{sale.payments[0].method.replace("_", " ")}</span>
+              </div>
+              {sale.payments[0].tenderedCents != null && (
+                <div className="flex justify-between">
+                  <span>Tendered</span>
+                  <span>{formatLkr(sale.payments[0].tenderedCents)}</span>
+                </div>
+              )}
+            </>
+          )}
           {sale.payments[0]?.method === "cash" && sale.payments[0].changeCents != null && (
             <div className="flex justify-between">
               <span>Change</span>
@@ -179,7 +223,9 @@ export function ReceiptView({ sale, settings }: { sale: Sale; settings: Settings
             left: 0;
             top: 0;
             width: ${width};
+            max-width: ${width};
           }
+          @page { margin: 4mm; size: ${width} auto; }
         }
       `}</style>
     </div>

@@ -8,6 +8,8 @@ import { generateInvoiceNumber } from "@/lib/ids/generate";
 import { Product } from "@/models/Product";
 import { Sale } from "@/models/Sale";
 import { Shift } from "@/models/Shift";
+import { User } from "@/models/User";
+import { businessDayRange } from "@/lib/time/business-day";
 
 export async function GET(request: Request) {
   const { response } = await requireRole(["admin", "cashier"]);
@@ -15,9 +17,37 @@ export async function GET(request: Request) {
   await connectDb();
   const { searchParams } = new URL(request.url);
   const { page, limit, skip } = parsePagination(searchParams, { defaultLimit: 20, maxLimit: 50 });
+  const filter: Record<string, unknown> = {};
+  const status = searchParams.get("status");
+  if (status === "completed" || status === "voided") filter.status = status;
+  const method = searchParams.get("method");
+  if (method === "cash" || method === "card" || method === "bank_transfer") {
+    filter["payments.method"] = method;
+  }
+  const date = searchParams.get("date");
+  try {
+    if (date) {
+      const { start, end } = businessDayRange(date);
+      filter.createdAt = { $gte: start, $lte: end };
+    }
+  } catch {
+    return jsonError("VALIDATION", "Date must be YYYY-MM-DD", 400);
+  }
+  const q = searchParams.get("q")?.trim();
+  if (q) {
+    const pattern = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = { $regex: pattern, $options: "i" };
+    const cashiers = await User.find({ name: regex }).select("_id").lean();
+    filter.$or = [
+      { invoiceNumber: regex },
+      { "lineItems.sku": regex },
+      { "lineItems.name": regex },
+      { soldBy: { $in: cashiers.map((user) => user._id) } },
+    ];
+  }
   const [total, sales] = await Promise.all([
-    Sale.countDocuments(),
-    Sale.find()
+    Sale.countDocuments(filter),
+    Sale.find(filter)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)

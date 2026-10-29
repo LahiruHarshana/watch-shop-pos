@@ -1,9 +1,13 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { authConfig } from "@/lib/auth/auth.config";
 import { connectDb } from "@/lib/db/mongoose";
 import { User } from "@/models/User";
+
+class InactiveAccount extends CredentialsSignin {
+  code = "inactive_account";
+}
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
@@ -19,9 +23,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         await connectDb();
         const user = await User.findOne({
           email: String(credentials.email).toLowerCase(),
-          isActive: true,
         });
         if (!user) return null;
+        if (!user.isActive) throw new InactiveAccount();
         const valid = await bcrypt.compare(
           String(credentials.password),
           user.passwordHash,

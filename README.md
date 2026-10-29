@@ -19,7 +19,7 @@ Next.js monolith POS for watch retail and repair (MVP Phase One).
 
 After seeding you get 13 products across 6 categories, 5 repair tickets, 8 sample sales (7-day chart), one open shift, and low-stock sample (`BAT-CR2016`).
 
-Change these passwords in production.
+Change these passwords before the shop goes live. They are development seed values, not production credentials.
 
 ## LAN access (tablet / phone)
 
@@ -31,4 +31,4 @@ Visit `http://<your-pc-ip>:3000` on the same network.
 
 ## Docs
 
-See [docs/MVP-PHASE-ONE-IMPLEMENTATION-GUIDE.md](docs/MVP-PHASE-ONE-IMPLEMENTATION-GUIDE.md).
+See [docs/MVP-PHASE-ONE-IMPLEMENTATION-GUIDE.md](docs/MVP-PHASE-ONE-IMPLEMENTATION-GUIDE.md) and [docs/SHOP-PC-DEPLOYMENT.md](docs/SHOP-PC-DEPLOYMENT.md).

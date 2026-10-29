@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useSession } from "next-auth/react";
 
 type Ticket = {
   _id: string;
@@ -59,6 +60,18 @@ export function RepairDetail({ ticket }: { ticket: Ticket }) {
   const reduceMotion = useReducedMotion();
   const instant = reduceMotion === true;
 
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "admin";
+  const canEdit = ticket.status !== "delivered" || isAdmin;
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState({
+    customerName: ticket.customerName,
+    customerPhone: ticket.customerPhone,
+    watchBrand: ticket.watchBrand,
+    watchModel: ticket.watchModel,
+    issueDescription: ticket.issueDescription,
+    estimatedCost: String(ticket.estimatedCostCents / 100),
+  });
   const next = nextStatus[ticket.status];
   const nextLabel = next ? statusLabels[next] : null;
 
@@ -82,6 +95,32 @@ export function RepairDetail({ ticket }: { ticket: Ticket }) {
       return;
     }
     toast.success("Ticket updated");
+    router.refresh();
+  }
+
+  async function saveIntake(event: React.FormEvent) {
+    event.preventDefault();
+    setLoading(true);
+    const res = await fetch(`/api/repairs/${ticket._id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customerName: draft.customerName,
+        customerPhone: draft.customerPhone,
+        watchBrand: draft.watchBrand,
+        watchModel: draft.watchModel,
+        issueDescription: draft.issueDescription,
+        estimatedCostCents: Math.round(Number(draft.estimatedCost) * 100),
+      }),
+    });
+    const json = await res.json();
+    setLoading(false);
+    if (!res.ok) {
+      toast.error(json.error?.message ?? "Could not save ticket");
+      return;
+    }
+    toast.success("Ticket details saved");
+    setEditing(false);
     router.refresh();
   }
 
@@ -148,6 +187,25 @@ export function RepairDetail({ ticket }: { ticket: Ticket }) {
         </div>
       </div>
 
+      {canEdit && (
+        <div className="rounded-2xl border border-border/80 bg-card p-4">
+          <button type="button" className="text-sm font-medium text-primary" onClick={() => setEditing((v) => !v)}>
+            {editing ? "Close editor" : "Edit intake details"}
+          </button>
+          {editing && (
+            <form onSubmit={saveIntake} className="mt-3 grid gap-3 sm:grid-cols-2">
+              <input className="min-h-10 rounded-xl border px-3" value={draft.customerName} onChange={(e) => setDraft({ ...draft, customerName: e.target.value })} required />
+              <input className="min-h-10 rounded-xl border px-3" value={draft.customerPhone} onChange={(e) => setDraft({ ...draft, customerPhone: e.target.value })} required />
+              <input className="min-h-10 rounded-xl border px-3" value={draft.watchBrand} onChange={(e) => setDraft({ ...draft, watchBrand: e.target.value })} required />
+              <input className="min-h-10 rounded-xl border px-3" value={draft.watchModel} onChange={(e) => setDraft({ ...draft, watchModel: e.target.value })} required />
+              <textarea className="min-h-20 rounded-xl border px-3 py-2 sm:col-span-2" value={draft.issueDescription} onChange={(e) => setDraft({ ...draft, issueDescription: e.target.value })} required />
+              <input className="min-h-10 rounded-xl border px-3" inputMode="decimal" value={draft.estimatedCost} onChange={(e) => setDraft({ ...draft, estimatedCost: e.target.value })} required />
+              <Button type="submit" disabled={loading} className="rounded-xl">Save details</Button>
+            </form>
+          )}
+        </div>
+      )}
+
       {next && (
         <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm sm:p-5">
           <p className="mb-3 text-sm font-medium">Workflow</p>
@@ -172,7 +230,7 @@ export function RepairDetail({ ticket }: { ticket: Ticket }) {
           <Button
             onClick={advance}
             disabled={loading}
-            className="h-10 w-full rounded-xl bg-gradient-to-r from-primary to-violet-500 text-sm font-semibold shadow-[0_8px_20px_rgb(91_92_246/0.28)] hover:brightness-110 sm:w-auto sm:px-6"
+            className="h-10 w-full rounded-xl text-sm font-semibold sm:w-auto sm:px-6"
           >
             {ticket.status === "ready" ? (
               "Mark delivered & record payment"

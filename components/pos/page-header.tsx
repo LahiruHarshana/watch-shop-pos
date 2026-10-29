@@ -10,7 +10,7 @@ export function PageHeader({
   return (
     <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+        <h1 className="text-4xl text-foreground md:text-5xl">
           {title}
         </h1>
         {description && (

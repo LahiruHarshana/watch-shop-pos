@@ -4,6 +4,7 @@ import { jsonError, jsonOk, jsonPaginated } from "@/lib/api/response";
 import { buildPaginationMeta, parsePagination } from "@/lib/api/pagination";
 import { generateRepairTicketId } from "@/lib/ids/generate";
 import { RepairTicket } from "@/models/RepairTicket";
+import { businessDayRange } from "@/lib/time/business-day";
 
 export async function GET(request: Request) {
   const { response } = await requireRole(["admin", "cashier"]);
@@ -11,7 +12,32 @@ export async function GET(request: Request) {
   await connectDb();
   const { searchParams } = new URL(request.url);
   const board = searchParams.get("board") === "true";
-  const filter = board ? { status: { $ne: "delivered" as const } } : {};
+  const filter: Record<string, unknown> = {};
+  const status = searchParams.get("status");
+  if (board) filter.status = { $ne: "delivered" };
+  else if (status === "pending" || status === "in_progress" || status === "ready" || status === "delivered") {
+    filter.status = status;
+  }
+  const q = searchParams.get("q")?.trim();
+  if (q) {
+    const pattern = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = { $regex: pattern, $options: "i" };
+    filter.$or = [
+      { ticketId: regex },
+      { customerName: regex },
+      { customerPhone: regex },
+      { watchBrand: regex },
+      { watchModel: regex },
+    ];
+  }
+  const from = searchParams.get("from");
+  const to = searchParams.get("to");
+  if (from || to) {
+    const createdAt: Record<string, Date> = {};
+    if (from) createdAt.$gte = businessDayRange(from).start;
+    if (to) createdAt.$lte = businessDayRange(to).end;
+    filter.createdAt = createdAt;
+  }
   if (board) {
     const tickets = await RepairTicket.find(filter)
       .sort({ updatedAt: -1 })

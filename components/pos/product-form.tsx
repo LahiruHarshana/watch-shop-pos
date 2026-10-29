@@ -38,6 +38,7 @@ export function ProductForm({
   disabled,
   onCancel,
   cancelLabel = "Cancel",
+  lockQuantity = false,
 }: {
   categories: Category[];
   values: ProductFormValues;
@@ -47,6 +48,7 @@ export function ProductForm({
   disabled?: boolean;
   onCancel?: () => void;
   cancelLabel?: string;
+  lockQuantity?: boolean;
 }) {
   return (
     <form onSubmit={onSubmit} className="space-y-6">
@@ -101,15 +103,21 @@ export function ProductForm({
               required
             />
           </Field>
-          <Field label="Quantity on hand" hint="Current units in the shop.">
-            <Input
-              className={inputClass}
-              inputMode="numeric"
-              placeholder="0"
-              value={values.quantity}
-              onChange={(e) => onChange({ ...values, quantity: e.target.value })}
-            />
-          </Field>
+          {lockQuantity ? (
+            <Field label="Quantity on hand" hint="Change stock from Stock adjustments so every movement is logged.">
+              <Input className={inputClass} value={values.quantity} readOnly />
+            </Field>
+          ) : (
+            <Field label="Opening quantity" hint="Logged as an opening-stock adjustment.">
+              <Input
+                className={inputClass}
+                inputMode="numeric"
+                placeholder="0"
+                value={values.quantity}
+                onChange={(e) => onChange({ ...values, quantity: e.target.value })}
+              />
+            </Field>
+          )}
           <Field label="Low stock alert" hint="Warn when stock falls to this level or below." className="sm:col-span-2">
             <Input
               className={cn(inputClass, "max-w-[140px]")}
@@ -159,7 +167,7 @@ export function ProductForm({
         <Button
           type="submit"
           disabled={disabled || !values.categoryId}
-          className="min-h-11 w-full rounded-xl bg-gradient-to-r from-primary to-violet-500 font-semibold shadow-[0_8px_20px_rgb(91_92_246/0.28)] hover:brightness-110 sm:w-auto sm:min-w-[180px]"
+          className="h-10 w-full rounded-xl font-semibold sm:w-auto sm:min-w-[180px]"
         >
           {submitLabel}
         </Button>
@@ -178,7 +186,7 @@ function FormSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-border/60 bg-muted/20 p-4 sm:p-5">
+    <section className="pos-surface p-4 sm:p-5">
       <div className="mb-4">
         <h2 className="text-sm font-semibold text-foreground">{title}</h2>
         <p className="text-xs text-muted-foreground">{description}</p>

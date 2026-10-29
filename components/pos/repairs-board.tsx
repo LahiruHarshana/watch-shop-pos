@@ -28,7 +28,7 @@ type Ticket = {
   status: RepairStatus;
 };
 
-const columns: RepairStatus[] = ["pending", "in_progress", "ready", "delivered"];
+const columns: RepairStatus[] = ["pending", "in_progress", "ready"];
 
 const columnMeta: Record<
   RepairStatus,
@@ -62,6 +62,10 @@ const columnMeta: Record<
 
 export function RepairsBoard() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [delivered, setDelivered] = useState<Ticket[]>([]);
+  const [searchHits, setSearchHits] = useState<Ticket[] | null>(null);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const reduceMotion = useReducedMotion();
   const instant = reduceMotion === true;
@@ -71,7 +75,21 @@ export function RepairsBoard() {
       .then((r) => r.json())
       .then((j) => setTickets(j.data ?? []))
       .finally(() => setLoading(false));
+    fetch("/api/repairs?status=delivered&limit=12")
+      .then((r) => r.json())
+      .then((j) => setDelivered(j.data ?? []));
   }, []);
+
+  function runSearch(event: React.FormEvent) {
+    event.preventDefault();
+    const params = new URLSearchParams();
+    if (query.trim()) params.set("q", query.trim());
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    params.set("limit", "20");
+    fetch(`/api/repairs?${params}`)
+      .then((r) => r.json())
+      .then((j) => setSearchHits(j.data ?? []));
+  }
 
   const openCount = useMemo(
     () => tickets.filter((t) => t.status !== "delivered").length,
@@ -92,11 +110,11 @@ export function RepairsBoard() {
         initial={instant ? false : { opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="relative overflow-hidden rounded-[1.5rem] border border-white/60 bg-white/75 px-5 py-5 shadow-[0_16px_40px_rgb(120_140_180/0.1)] backdrop-blur-md dashboard-mesh md:flex md:items-center md:justify-between md:gap-4"
+        className="pos-surface flex flex-wrap items-center justify-between gap-4 px-5 py-5"
       >
         <div>
           <p className="mb-1 text-xs font-medium text-primary">Repair bench</p>
-          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Repairs</h1>
+          <h1 className="text-4xl md:text-5xl">Repairs</h1>
           <p className="text-sm text-muted-foreground">Track every watch from intake to pickup.</p>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-3 md:mt-0">
@@ -114,7 +132,7 @@ export function RepairsBoard() {
             href="/repairs/new"
             className={cn(
               buttonVariants(),
-              "min-h-11 rounded-xl bg-gradient-to-r from-primary to-violet-500 shadow-[0_10px_24px_rgb(91_92_246/0.3)] hover:brightness-110",
+              "h-10 rounded-xl",
             )}
           >
             <Plus className="mr-1.5 size-4" aria-hidden />
@@ -124,7 +142,7 @@ export function RepairsBoard() {
       </motion.header>
 
       {loading ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {columns.map((status) => (
             <div
               key={status}
@@ -133,7 +151,7 @@ export function RepairsBoard() {
           ))}
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {columns.map((status, colIndex) => {
             const meta = columnMeta[status];
             const Icon = meta.icon;
@@ -192,7 +210,69 @@ export function RepairsBoard() {
           })}
         </div>
       )}
+
+      <form onSubmit={runSearch} className="flex flex-col gap-2 rounded-2xl border border-border/70 bg-card p-4 sm:flex-row">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Ticket, customer, phone, brand, or model"
+          className="min-h-11 flex-1 rounded-xl border border-border bg-white px-3 text-sm"
+        />
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="min-h-11 rounded-xl border border-border bg-white px-3 text-sm"
+        >
+          <option value="all">All statuses</option>
+          <option value="pending">Pending</option>
+          <option value="in_progress">In progress</option>
+          <option value="ready">Ready for Collection</option>
+          <option value="delivered">Delivered</option>
+        </select>
+        <button type="submit" className="min-h-11 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground">
+          Search
+        </button>
+      </form>
+      {searchHits && (
+        <RepairList title="Search results" tickets={searchHits} empty="No tickets match that search." />
+      )}
+      <RepairList title="Recently delivered" tickets={delivered} empty="No delivered repairs yet." />
     </div>
+  );
+}
+
+function RepairList({
+  title,
+  tickets,
+  empty,
+}: {
+  title: string;
+  tickets: Ticket[];
+  empty: string;
+}) {
+  return (
+    <section className="rounded-2xl border border-border/70 bg-card p-4">
+      <h2 className="mb-3 text-sm font-semibold">{title}</h2>
+      {tickets.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{empty}</p>
+      ) : (
+        <ul className="divide-y divide-border/60">
+          {tickets.map((ticket) => (
+            <li key={ticket._id}>
+              <Link href={`/repairs/${ticket._id}`} className="flex items-center justify-between gap-3 py-2 text-sm">
+                <span>
+                  <span className="font-medium">{ticket.ticketId}</span>
+                  <span className="ml-2 text-muted-foreground">
+                    {ticket.customerName} · {ticket.watchBrand} {ticket.watchModel}
+                  </span>
+                </span>
+                <span className={statusPillClass(ticket.status)}>{statusLabels[ticket.status]}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

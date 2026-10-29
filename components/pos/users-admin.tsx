@@ -67,7 +67,6 @@ export function UsersAdmin() {
   const [savingEdit, setSavingEdit] = useState(false);
 
   function load() {
-    setLoading(true);
     fetch(`/api/users?page=${page}&limit=10`)
       .then((r) => r.json())
       .then((j) => {
@@ -138,7 +137,7 @@ export function UsersAdmin() {
     <div className="mx-auto max-w-5xl space-y-5 pb-8">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Staff</h1>
+          <h1 className="text-4xl md:text-5xl">Staff</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Team logins for the shop floor and back office.
           </p>
@@ -295,7 +294,7 @@ export function UsersAdmin() {
                 <Button
                   type="submit"
                   disabled={submitting}
-                  className="min-h-11 rounded-xl bg-gradient-to-r from-primary to-violet-500 font-semibold shadow-[0_8px_20px_rgb(91_92_246/0.28)] hover:brightness-110"
+                  className="h-10 rounded-xl font-semibold"
                 >
                   {submitting ? "Creating…" : "Create user"}
                 </Button>

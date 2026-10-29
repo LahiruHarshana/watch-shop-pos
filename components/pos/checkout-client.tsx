@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Search,
@@ -50,6 +50,8 @@ type CartLine = {
 
 export function CheckoutClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlQuery = searchParams.get("q") ?? "";
   const reduceMotion = useReducedMotion();
   const instant = reduceMotion === true;
 
@@ -57,7 +59,14 @@ export function CheckoutClient() {
   const [products, setProducts] = useState<Product[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [page, setPage] = useState(1);
-  const [q, setQ] = useState("");
+  const [draftQ, setDraftQ] = useState(urlQuery);
+  const [trackedQuery, setTrackedQuery] = useState(urlQuery);
+  if (trackedQuery !== urlQuery) {
+    setTrackedQuery(urlQuery);
+    setDraftQ(urlQuery);
+    setPage(1);
+  }
+  const q = draftQ;
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [cartDiscount, setCartDiscount] = useState<{ type: DiscountType; value: string } | null>(
@@ -66,6 +75,7 @@ export function CheckoutClient() {
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "bank_transfer">("cash");
   const [tendered, setTendered] = useState("");
   const [loading, setLoading] = useState(false);
+  const [productsReady, setProductsReady] = useState(false);
 
   const loadProducts = useCallback(async () => {
     const params = new URLSearchParams();
@@ -77,6 +87,7 @@ export function CheckoutClient() {
     const json = await res.json();
     setProducts(json.data ?? []);
     setPagination(json.pagination ?? null);
+    setProductsReady(true);
   }, [q, categoryId, page]);
 
   useEffect(() => {
@@ -188,18 +199,18 @@ export function CheckoutClient() {
         initial={instant ? false : { opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="relative overflow-hidden rounded-[1.5rem] border border-white/60 bg-white/75 px-5 py-4 shadow-[0_16px_40px_rgb(120_140_180/0.1)] backdrop-blur-md dashboard-mesh md:flex md:items-center md:justify-between md:gap-4"
+        className="flex flex-wrap items-end justify-between gap-4"
       >
         <div>
-          <p className="mb-1 text-xs font-medium text-primary">Counter sale</p>
-          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Checkout</h1>
-          <p className="text-sm text-muted-foreground">Tap products to add — pay when ready.</p>
+          <p className="mb-1 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Counter</p>
+          <h1 className="text-4xl md:text-5xl">Checkout</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Tap a piece to add it. The ticket stays on the right.</p>
         </div>
-        <div className="mt-3 flex items-center gap-2 md:mt-0">
-          <span className="rounded-2xl bg-primary/10 px-4 py-2 text-sm font-semibold text-primary">
+        <div className="flex items-center gap-2">
+          <span className="rounded-2xl border border-border bg-white px-4 py-2 text-sm">
             {cartCount} {cartCount === 1 ? "item" : "items"}
           </span>
-          <span className="rounded-2xl bg-muted px-4 py-2 text-sm font-bold">
+          <span className="font-display metric rounded-2xl bg-[#141218] px-4 py-2 text-lg text-[#f6f1ea]">
             {formatLkr(totals.totalCents)}
           </span>
         </div>
@@ -213,11 +224,11 @@ export function CheckoutClient() {
               aria-hidden
             />
             <Input
-              className="min-h-12 rounded-2xl border-border/60 bg-white/90 pl-11 shadow-[0_8px_24px_rgb(120_140_180/0.08)] backdrop-blur-sm"
+              className="min-h-12 rounded-2xl border-border bg-white pl-11 shadow-[var(--shadow-surface)]"
               placeholder="Search name or SKU…"
               value={q}
               onChange={(e) => {
-                setQ(e.target.value);
+                setDraftQ(e.target.value);
                 setPage(1);
               }}
             />
@@ -253,8 +264,8 @@ export function CheckoutClient() {
             className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
           >
             {products.length === 0 ? (
-              <p className="col-span-full rounded-2xl border border-dashed border-border bg-white/50 px-4 py-10 text-center text-sm text-muted-foreground">
-                No products match your search.
+              <p className="col-span-full rounded-2xl border border-dashed border-border bg-surface-muted px-4 py-10 text-center text-sm text-muted-foreground">
+                {productsReady ? "No products match your search." : "Loading products…"}
               </p>
             ) : (
               products.map((p, i) => (
@@ -282,15 +293,15 @@ export function CheckoutClient() {
           transition={{ delay: 0.1, duration: 0.4 }}
           className="lg:col-span-2"
         >
-          <div className="sticky top-28 overflow-hidden rounded-[1.5rem] border border-border/80 bg-card shadow-[0_20px_50px_rgb(120_140_180/0.14)]">
-            <div className="border-b border-border/60 bg-gradient-to-r from-primary/10 via-violet-500/5 to-transparent px-6 py-4">
+          <div className="pos-ink sticky top-24 overflow-hidden">
+            <div className="border-b border-white/10 px-6 py-5">
               <div className="flex items-center gap-3">
-                <span className="flex size-10 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-md">
+                <span className="flex size-10 items-center justify-center rounded-xl bg-[#f6f1ea] text-[#141218]">
                   <ShoppingBag className="size-5" aria-hidden />
                 </span>
                 <div>
-                  <h2 className="text-lg font-bold tracking-tight">Cart</h2>
-                  <p className="text-xs text-muted-foreground">
+                  <h2 className="font-display text-2xl text-[#f6f1ea]">Ticket</h2>
+                  <p className="text-xs text-white/50">
                     {cart.length === 0 ? "Add products to start" : `${cart.length} line items`}
                   </p>
                 </div>
@@ -299,9 +310,9 @@ export function CheckoutClient() {
 
             <div className="space-y-4 p-6">
               {cart.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-border bg-muted/40 px-4 py-10 text-center">
-                  <Package className="mx-auto mb-2 size-8 text-muted-foreground/60" aria-hidden />
-                  <p className="text-sm text-muted-foreground">Your cart is empty.</p>
+                <div className="rounded-2xl border border-dashed border-white/15 px-4 py-10 text-center">
+                  <Package className="mx-auto mb-2 size-8 text-white/40" aria-hidden />
+                  <p className="text-sm text-white/55">Your cart is empty.</p>
                 </div>
               ) : (
                 <ul className="max-h-[min(40vh,320px)] space-y-3 overflow-y-auto pr-1">
@@ -344,25 +355,23 @@ export function CheckoutClient() {
                 </ul>
               )}
 
-              <div className="space-y-2 rounded-2xl bg-muted/50 p-4 text-sm">
-                <div className="flex justify-between text-muted-foreground">
+              <div className="space-y-2 rounded-2xl bg-white/6 p-4 text-sm">
+                <div className="flex justify-between text-white/55">
                   <span>Subtotal</span>
                   <span>{formatLkr(totals.subtotalCents)}</span>
                 </div>
                 {totals.discountTotalCents > 0 && (
-                  <div className="flex justify-between text-emerald-700">
+                  <div className="flex justify-between text-emerald-300">
                     <span>Discount</span>
                     <span>-{formatLkr(totals.discountTotalCents)}</span>
                   </div>
                 )}
                 <div
-                  className="flex justify-between border-t border-border/60 pt-2 text-xl font-bold"
+                  className="flex items-end justify-between border-t border-white/10 pt-3"
                   aria-live="polite"
                 >
-                  <span>Total</span>
-                  <span className="bg-gradient-to-r from-primary to-violet-500 bg-clip-text text-transparent">
-                    {formatLkr(totals.totalCents)}
-                  </span>
+                  <span className="text-sm text-white/55">Total</span>
+                  <span className="font-display metric text-4xl text-[#f6f1ea]">{formatLkr(totals.totalCents)}</span>
                 </div>
               </div>
 
@@ -373,7 +382,7 @@ export function CheckoutClient() {
                     setCartDiscount(v === "none" ? null : { type: v as DiscountType, value: "0" })
                   }
                 >
-                  <SelectTrigger className="min-h-10 rounded-xl bg-white">
+                  <SelectTrigger className="min-h-10 rounded-xl border-white/15 bg-white/8 text-[#f6f1ea]">
                     <SelectValue placeholder="Cart discount" />
                   </SelectTrigger>
                   <SelectContent>
@@ -384,7 +393,7 @@ export function CheckoutClient() {
                 </Select>
                 {cartDiscount && (
                   <Input
-                    className="rounded-xl bg-white"
+                    className="rounded-xl border-white/15 bg-white/8 text-[#f6f1ea]"
                     placeholder={cartDiscount.type === "flat" ? "LKR" : "%"}
                     value={cartDiscount.value}
                     onChange={(e) => setCartDiscount({ ...cartDiscount, value: e.target.value })}
@@ -392,19 +401,31 @@ export function CheckoutClient() {
                 )}
               </div>
 
-              <Select
-                value={paymentMethod}
-                onValueChange={(v) => setPaymentMethod(v as typeof paymentMethod)}
-              >
-                <SelectTrigger className="min-h-11 rounded-xl bg-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="card">Credit / Debit Card</SelectItem>
-                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Payment method">
+                {(
+                  [
+                    ["cash", "Cash"],
+                    ["card", "Card"],
+                    ["bank_transfer", "Bank"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    role="tab"
+                    aria-selected={paymentMethod === value}
+                    onClick={() => setPaymentMethod(value)}
+                    className={cn(
+                      "h-11 rounded-xl border text-sm font-medium transition",
+                      paymentMethod === value
+                        ? "border-[#f6f1ea] bg-[#f6f1ea] text-[#141218]"
+                        : "border-white/15 bg-transparent text-white/60 hover:text-white",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
 
               {paymentMethod === "cash" && (
                 <div className="space-y-1">
@@ -412,16 +433,16 @@ export function CheckoutClient() {
                     placeholder="Amount tendered (LKR)"
                     value={tendered}
                     onChange={(e) => setTendered(e.target.value)}
-                    className="min-h-11 rounded-xl bg-white"
+                    className="min-h-11 rounded-xl border-white/15 bg-white/8 text-[#f6f1ea] placeholder:text-white/40"
                   />
-                  <p className="text-sm text-muted-foreground" aria-live="polite">
-                    Change: <strong className="text-foreground">{formatLkr(changeCents)}</strong>
+                  <p className="text-sm text-white/55" aria-live="polite">
+                    Change: <strong className="text-[#f6f1ea]">{formatLkr(changeCents)}</strong>
                   </p>
                 </div>
               )}
 
               <Button
-                className="w-full min-h-12 rounded-xl bg-gradient-to-r from-primary to-violet-500 text-base font-semibold shadow-[0_12px_28px_rgb(91_92_246/0.35)] hover:brightness-110"
+                className="h-12 w-full rounded-xl bg-[#f6f1ea] text-base font-semibold text-[#141218] hover:bg-white"
                 disabled={cart.length === 0 || loading}
                 onClick={completeSale}
               >
@@ -489,22 +510,19 @@ function ProductCard({
       transition={{ delay: instant ? 0 : Math.min(index * 0.04, 0.35), duration: 0.35 }}
       whileHover={instant ? undefined : { y: -4, scale: 1.01 }}
       whileTap={instant ? undefined : { scale: 0.98 }}
-      className={cn(
-        "group relative overflow-hidden rounded-[1.25rem] border bg-card p-4 text-left shadow-[0_8px_24px_rgb(120_140_180/0.08)] transition-shadow hover:shadow-[0_16px_36px_rgb(120_140_180/0.14)]",
-        inCart ? "border-primary/40 ring-2 ring-primary/15" : "border-border/70",
-      )}
+        className={cn(
+          "group relative rounded-2xl border bg-card p-4 text-left shadow-[var(--shadow-surface)] transition-colors",
+          inCart ? "border-[#141218]" : "border-border hover:border-[#141218]/30",
+          low && "bg-[#fff6ea]",
+        )}
     >
-      <div
-        className="pointer-events-none absolute -right-4 -top-4 size-20 rounded-full bg-primary/5 blur-2xl transition-opacity group-hover:opacity-100"
-        aria-hidden
-      />
-      <div className="mb-3 flex size-10 items-center justify-center rounded-xl bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary">
-        <Package className="size-5" aria-hidden />
-      </div>
-      <p className="font-semibold leading-snug tracking-tight">{product.name}</p>
-      <p className="mt-0.5 text-xs text-muted-foreground">{product.sku}</p>
-      <div className="mt-3 flex items-end justify-between gap-2">
-        <span className="text-base font-bold text-foreground">{formatLkr(product.priceCents)}</span>
+      <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">{product.sku}</p>
+      <p className="mt-2 font-medium leading-snug tracking-tight">{product.name}</p>
+      {typeof product.categoryId === "object" && (
+        <p className="mt-0.5 text-xs text-muted-foreground">{product.categoryId.name}</p>
+      )}
+      <div className="mt-4 flex items-end justify-between gap-2">
+        <span className="font-display text-xl text-foreground">{formatLkr(product.priceCents)}</span>
         <Badge
           variant={low ? "destructive" : "secondary"}
           className={cn("rounded-full", !low && "bg-muted text-muted-foreground")}
@@ -513,7 +531,7 @@ function ProductCard({
         </Badge>
       </div>
       {inCart && (
-        <span className="absolute right-3 top-3 size-2.5 rounded-full bg-primary shadow-[0_0_8px_rgb(91_92_246/0.8)]" />
+        <span className="absolute right-3 top-3 size-2 rounded-full bg-brand" />
       )}
     </motion.button>
   );

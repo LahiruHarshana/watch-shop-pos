@@ -129,7 +129,7 @@ export function ProductsAdmin() {
     <div className="space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Inventory</h1>
+          <h1 className="text-4xl md:text-5xl">Inventory</h1>
           <p className="text-sm text-muted-foreground">
             View products, open a row to see details, or edit as admin.
           </p>

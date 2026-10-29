@@ -22,6 +22,8 @@ type Report = {
   totalCents: number;
   saleCount: number;
   repairCount: number;
+  voidCount?: number;
+  drawerVarianceCents?: number | null;
   paymentBreakdown?: Record<string, number>;
 };
 
@@ -41,19 +43,26 @@ function formatDisplayDate(dateStr: string) {
   });
 }
 
-export function DailyReport() {
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+export function DailyReport({ initialDate }: { initialDate: string }) {
+  const [date, setDate] = useState(initialDate);
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
   const reduceMotion = useReducedMotion();
   const instant = reduceMotion === true;
 
   useEffect(() => {
-    setLoading(true);
+    let ignore = false;
     fetch(`/api/reports/daily?date=${date}`)
       .then((r) => r.json())
-      .then((j) => setReport(j.data))
-      .finally(() => setLoading(false));
+      .then((j) => {
+        if (!ignore) setReport(j.data);
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
   }, [date]);
 
   const retailShare = useMemo(() => {
@@ -82,20 +91,36 @@ export function DailyReport() {
         initial={instant ? false : { opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="relative overflow-hidden rounded-[1.5rem] border border-white/60 bg-white/75 px-5 py-5 shadow-[0_16px_40px_rgb(120_140_180/0.1)] backdrop-blur-md dashboard-mesh md:flex md:items-end md:justify-between md:gap-6"
+        className="pos-surface flex flex-wrap items-end justify-between gap-4 px-5 py-5"
       >
         <div>
           <p className="mb-1 text-xs font-medium text-primary">End of day</p>
-          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Daily sales</h1>
+          <h1 className="text-4xl md:text-5xl">Daily sales</h1>
           <p className="text-sm text-muted-foreground">Retail and repair revenue for the selected date.</p>
         </div>
-        <div className="mt-4 md:mt-0">
-          <LabelledDate value={date} onChange={setDate} />
+        <div className="mt-4 flex flex-wrap items-end gap-2 md:mt-0">
+          <LabelledDate
+            value={date}
+            onChange={(value) => {
+              setLoading(true);
+              setDate(value);
+            }}
+          />
+          <a className="inline-flex h-10 items-center rounded-xl border bg-white px-3 text-sm font-medium" href={`/api/reports/daily/export.csv?date=${date}`}>
+            CSV
+          </a>
+          <a className="inline-flex h-10 items-center rounded-xl border bg-white px-3 text-sm font-medium" href={`/api/reports/daily/export.pdf?date=${date}`}>
+            PDF
+          </a>
         </div>
       </motion.header>
 
       {report && !loading && (
-        <p className="text-sm font-medium text-muted-foreground">{formatDisplayDate(report.date)}</p>
+        <p className="text-sm font-medium text-muted-foreground">
+          {formatDisplayDate(report.date)} · Asia/Colombo · {report.saleCount} sales · {report.repairCount} repairs
+          {report.voidCount ? ` · ${report.voidCount} voids` : ""}
+          {report.drawerVarianceCents != null ? ` · drawer variance ${formatLkr(report.drawerVarianceCents)}` : ""}
+        </p>
       )}
 
       {loading ? (
@@ -120,7 +145,7 @@ export function DailyReport() {
             </div>
             <div className="flex h-3 overflow-hidden rounded-full bg-muted">
               <motion.div
-                className="bg-gradient-to-r from-primary to-violet-400"
+                className="bg-brand"
                 initial={instant ? { width: `${retailShare}%` } : { width: 0 }}
                 animate={{ width: `${retailShare}%` }}
                 transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}

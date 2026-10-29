@@ -4,6 +4,8 @@ import { jsonError, jsonPaginated, jsonOk } from "@/lib/api/response";
 import { buildPaginationMeta, parsePagination } from "@/lib/api/pagination";
 import { buildProductListQuery } from "@/lib/products/product-list-query";
 import { Product } from "@/models/Product";
+import { StockAdjustment } from "@/models/StockAdjustment";
+import mongoose from "mongoose";
 
 export async function GET(request: Request) {
   const { user, response } = await requireSession();
@@ -57,20 +59,46 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const { response } = await requireRole(["admin"]);
+  const { user, response } = await requireRole(["admin"]);
   if (response) return response;
   await connectDb();
   const body = await request.json();
   if (!body.name || !body.sku || !body.categoryId || body.priceCents == null) {
     return jsonError("VALIDATION", "Missing required product fields", 400);
   }
+  const quantity = Number(body.quantity ?? 0);
+  if (!Number.isInteger(quantity) || quantity < 0) {
+    return jsonError("VALIDATION", "Opening quantity cannot be negative", 400);
+  }
+  const session = await mongoose.startSession();
   try {
-    const product = await Product.create({
-      ...body,
-      sku: String(body.sku).toUpperCase(),
-    });
+    session.startTransaction();
+    const created = await Product.create(
+      [{ ...body, sku: String(body.sku).toUpperCase(), quantity }],
+      { session },
+    );
+    const product = created[0];
+    if (quantity > 0) {
+      await StockAdjustment.create(
+        [{
+          productId: product._id,
+          delta: quantity,
+          reason: "purchase",
+          note: "Opening stock",
+          performedBy: user!.id,
+        }],
+        { session },
+      );
+    }
+    await session.commitTransaction();
     return jsonOk(product, 201);
-  } catch {
-    return jsonError("CONFLICT", "SKU already exists", 409);
+  } catch (error) {
+    await session.abortTransaction();
+    if ((error as { code?: number }).code === 11000) {
+      return jsonError("CONFLICT", "SKU already exists", 409);
+    }
+    throw error;
+  } finally {
+    session.endSession();
   }
 }

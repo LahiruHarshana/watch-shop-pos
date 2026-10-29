@@ -5,10 +5,9 @@ import { Sale } from "@/models/Sale";
 import { Product } from "@/models/Product";
 import { DashboardHome } from "@/components/pos/dashboard-home";
 import type { RepairStatus } from "@/models/RepairTicket";
+import { addBusinessDays, businessDateKey, businessDayRange, businessTodayKey, businessWeekdayLabel } from "@/lib/time/business-day";
 
 export const instant = false;
-
-const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const shortcuts = [
     { href: "/inventory/products?category=mens-watches", title: "Men's watches", tone: "bg-[#eef2ff]" },
@@ -22,10 +21,9 @@ export default async function DashboardPage() {
   const isAdmin = session?.user?.role === "admin";
   await connectDb();
 
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const weekStart = new Date(start);
-  weekStart.setDate(weekStart.getDate() - 6);
+  const todayKey = businessTodayKey();
+  const weekStartKey = addBusinessDays(todayKey, -6);
+  const weekStart = businessDayRange(weekStartKey).start;
 
   const weekSales = await Sale.find({
     status: "completed",
@@ -33,19 +31,27 @@ export default async function DashboardPage() {
   }).lean();
 
   const buckets = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(weekStart);
-    d.setDate(weekStart.getDate() + i);
-    return { label: days[d.getDay()], cents: 0, key: d.toDateString() };
+    const key = addBusinessDays(weekStartKey, i);
+    return { label: businessWeekdayLabel(key), cents: 0, key };
   });
   for (const sale of weekSales) {
-    const key = new Date(sale.createdAt ?? Date.now()).toDateString();
+    const createdAt = sale.createdAt ? new Date(sale.createdAt) : null;
+    if (!createdAt) continue;
+    const key = businessDateKey(createdAt);
     const bucket = buckets.find((b) => b.key === key);
     if (bucket) bucket.cents += sale.totalCents;
   }
   const maxCents = Math.max(...buckets.map((b) => b.cents), 1);
-  const todayKey = start.toDateString();
   const todayCents = buckets.find((b) => b.key === todayKey)?.cents ?? 0;
   const weekTotalCents = buckets.reduce((sum, b) => sum + b.cents, 0);
+  const { start, end } = businessDayRange(todayKey);
+  const paidToday = await RepairTicket.find({
+    status: "delivered",
+    "payment.paidAt": { $gte: start, $lte: end },
+  })
+    .select("payment.amountCents")
+    .lean();
+  const repairCents = paidToday.reduce((sum, ticket) => sum + (ticket.payment?.amountCents ?? 0), 0);
 
   const lowStock = isAdmin
     ? await Product.find({
@@ -68,6 +74,7 @@ export default async function DashboardPage() {
     <DashboardHome
       firstName={firstName}
       todayCents={todayCents}
+      repairCents={repairCents}
       weekTotalCents={weekTotalCents}
       maxCents={maxCents}
       buckets={buckets.map((b) => ({
@@ -83,6 +90,7 @@ export default async function DashboardPage() {
         watchBrand: t.watchBrand,
         watchModel: t.watchModel,
         customerName: t.customerName,
+        estimatedCostCents: t.estimatedCostCents,
       }))}
       shortcuts={shortcuts}
       lowStock={lowStock.map((p) => ({

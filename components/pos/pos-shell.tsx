@@ -3,14 +3,17 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   LayoutDashboard,
   ShoppingCart,
   Wrench,
   Package,
+  Receipt,
   BarChart3,
   Settings,
+  Tags,
   Users,
   LogOut,
   Menu,
@@ -18,205 +21,255 @@ import {
   Search,
   Bell,
   Watch,
+  PanelLeft,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
 import { ShiftBar } from "@/components/pos/shift-bar";
-import { formatLkr } from "@/lib/money/format";
+import { springSoft } from "@/lib/motion/presets";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
-const nav = [
-  { href: "/dashboard", label: "Home", icon: LayoutDashboard, roles: ["admin", "cashier"] },
-  { href: "/checkout", label: "Checkout", icon: ShoppingCart, roles: ["admin", "cashier"] },
-  { href: "/repairs", label: "Repairs", icon: Wrench, roles: ["admin", "cashier"] },
-  { href: "/inventory/products", label: "Inventory", icon: Package, roles: ["admin", "cashier"] },
-  { href: "/inventory/adjustments", label: "Stock", icon: Layers, roles: ["admin"] },
-  { href: "/reports/daily", label: "Reports", icon: BarChart3, roles: ["admin"] },
-  { href: "/settings", label: "Settings", icon: Settings, roles: ["admin"] },
-  { href: "/users", label: "Staff", icon: Users, roles: ["admin"] },
+const groups = [
+  {
+    label: "Counter",
+    items: [
+      { href: "/dashboard", label: "Home", icon: LayoutDashboard, roles: ["admin", "cashier"] },
+      { href: "/checkout", label: "Checkout", icon: ShoppingCart, roles: ["admin", "cashier"] },
+      { href: "/sales", label: "Sales", icon: Receipt, roles: ["admin", "cashier"] },
+      { href: "/repairs", label: "Repairs", icon: Wrench, roles: ["admin", "cashier"] },
+    ],
+  },
+  {
+    label: "Catalog",
+    items: [
+      { href: "/inventory/products", label: "Inventory", icon: Package, roles: ["admin", "cashier"] },
+      { href: "/inventory/categories", label: "Categories", icon: Tags, roles: ["admin"] },
+      { href: "/inventory/adjustments", label: "Stock", icon: Layers, roles: ["admin"] },
+    ],
+  },
+  {
+    label: "Shop",
+    items: [
+      { href: "/reports/daily", label: "Reports", icon: BarChart3, roles: ["admin"] },
+      { href: "/settings", label: "Settings", icon: Settings, roles: ["admin"] },
+      { href: "/users", label: "Staff", icon: Users, roles: ["admin"] },
+    ],
+  },
 ];
 
-function NavItem({
-  href,
-  label,
-  icon: Icon,
-  active,
-}: {
-  href: string;
-  label: string;
-  icon: typeof LayoutDashboard;
-  active: boolean;
-}) {
-  return (
-    <Link
-      href={href}
-      className={cn(
-        "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition",
-        active
-          ? "bg-white text-foreground shadow-[0_8px_20px_rgb(140_160_200/0.25)]"
-          : "text-muted-foreground hover:bg-white/60 hover:text-foreground",
-      )}
-    >
-      <Icon className="size-4 shrink-0" />
-      {label}
-    </Link>
-  );
+function isActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function RightRail() {
-  const router = useRouter();
-  const [q, setQ] = useState("");
-  const [shift, setShift] = useState<{ open: boolean; cash: number }>({ open: false, cash: 0 });
-
-  useEffect(() => {
-    fetch("/api/shifts")
-      .then((r) => r.json())
-      .then((j) => {
-        setShift({
-          open: Boolean(j.data?.open),
-          cash: j.data?.expectedCashCents ?? 0,
-        });
-      })
-      .catch(() => undefined);
-  }, []);
-
+function NavLinks({
+  role,
+  pathname,
+  collapsed,
+  onNavigate,
+}: {
+  role: string;
+  pathname: string;
+  collapsed?: boolean;
+  onNavigate?: () => void;
+}) {
+  const reduce = useReducedMotion();
   return (
-    <aside className="hidden w-[300px] shrink-0 flex-col gap-4 border-l border-border/60 px-5 py-6 xl:flex">
-      <form
-        className="flex items-center gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          router.push(q ? `/checkout?q=${encodeURIComponent(q)}` : "/checkout");
-        }}
-      >
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search"
-            className="h-11 rounded-full border-0 bg-white pl-9 shadow-[0_6px_18px_rgb(140_160_200/0.12)]"
-          />
-        </div>
-        <span className="relative flex size-11 items-center justify-center rounded-full bg-white shadow-[0_6px_18px_rgb(140_160_200/0.12)]">
-          <Bell className="size-4 text-muted-foreground" />
-          <span className="absolute right-2.5 top-2.5 size-2 rounded-full bg-orange-400" />
-        </span>
-      </form>
-
-      <Link
-        href="/checkout"
-        className="relative overflow-hidden rounded-[1.4rem] bg-gradient-to-br from-primary to-violet-500 p-5 text-primary-foreground shadow-[0_16px_30px_rgb(91_92_246/0.35)]"
-      >
-        <p className="text-lg font-semibold leading-tight">Start a new sale</p>
-        <p className="mt-1 text-sm text-primary-foreground/80">Watches, straps, and batteries</p>
-        <span className="mt-4 inline-flex rounded-full bg-white px-4 py-2 text-sm font-medium text-primary">
-          Open checkout
-        </span>
-      </Link>
-
-      <div className="rounded-[1.4rem] bg-white p-5 shadow-[0_10px_24px_rgb(140_160_200/0.12)]">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="font-semibold">Drawer</p>
-            <p className="text-xs text-muted-foreground">
-              {shift.open ? "Shift is open" : "No open shift"}
-            </p>
+    <div className="flex flex-col gap-5">
+      {groups.map((group) => {
+        const items = group.items.filter((item) => item.roles.includes(role));
+        if (items.length === 0) return null;
+        return (
+          <div key={group.label}>
+            {!collapsed && (
+              <p className="mb-1.5 px-3 text-[10px] font-medium uppercase tracking-[0.18em] text-white/35">
+                {group.label}
+              </p>
+            )}
+            <div className="flex flex-col gap-0.5">
+              {items.map((item) => {
+                const active = isActive(pathname, item.href);
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    title={collapsed ? item.label : undefined}
+                    onClick={onNavigate}
+                    className={cn(
+                      "relative flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm font-medium text-white/55 transition-colors hover:bg-white/5 hover:text-white",
+                      collapsed && "justify-center px-0",
+                      active && "text-white",
+                    )}
+                  >
+                    {active && (
+                      <motion.span
+                        layoutId={reduce ? undefined : "nav-active"}
+                        className="absolute inset-0 rounded-xl bg-white/10"
+                        transition={springSoft}
+                      />
+                    )}
+                    {active && <span className="absolute top-2 bottom-2 left-0 z-10 w-0.5 rounded-full bg-[#c4a574]" />}
+                    <Icon className="relative z-10 size-4 shrink-0" />
+                    {!collapsed && <span className="relative z-10">{item.label}</span>}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
-          <div className="flex size-14 items-center justify-center rounded-full border-[6px] border-muted text-xs font-semibold text-primary">
-            {shift.open ? "On" : "Off"}
-          </div>
-        </div>
-        <p className="mt-3 text-sm text-muted-foreground">Expected cash {formatLkr(shift.cash)}</p>
-        <div className="mt-3">
-          <ShiftBar />
-        </div>
-      </div>
-    </aside>
+        );
+      })}
+    </div>
   );
 }
 
 export function PosShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const searchRef = useRef<HTMLInputElement>(null);
   const { data: session } = useSession();
   const role = session?.user?.role ?? "cashier";
-  const items = nav.filter((n) => n.roles.includes(role));
+  const [collapsed, setCollapsed] = useState(false);
+  const [q, setQ] = useState("");
   const name = session?.user?.name ?? "Staff";
   const initials = name
     .split(" ")
-    .map((n) => n[0])
+    .map((part) => part[0])
     .join("")
     .slice(0, 2)
     .toUpperCase();
 
-  const links = (
-    <nav className="flex flex-col gap-1">
-      {items.map((item) => (
-        <NavItem
-          key={item.href}
-          href={item.href}
-          label={item.label}
-          icon={item.icon}
-          active={pathname === item.href || pathname.startsWith(`${item.href}/`)}
-        />
-      ))}
-    </nav>
-  );
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        searchRef.current?.focus();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   return (
-    <div className="min-h-screen p-3 md:p-5">
-      <div className="pos-frame flex min-h-[calc(100vh-1.5rem)] md:min-h-[calc(100vh-2.5rem)]">
-        <aside className="hidden w-[230px] shrink-0 flex-col px-4 py-6 lg:flex">
-          <Link href="/dashboard" className="mb-8 flex items-center gap-2 px-2 text-lg font-semibold text-foreground">
-            <span className="flex size-8 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-              <Watch className="size-4" />
-            </span>
-            Watch POS
+    <div className="flex min-h-screen bg-background text-foreground">
+      <motion.aside
+        animate={{ width: collapsed ? 76 : 232 }}
+        transition={springSoft}
+        className="sticky top-0 hidden h-screen shrink-0 flex-col border-r border-white/8 bg-[#141218] px-3 py-4 text-[#f6f1ea] lg:flex"
+      >
+        <div className={cn("mb-6 flex items-center gap-2.5 px-1", collapsed && "justify-center")}>
+          <Link href="/dashboard" className="flex size-9 items-center justify-center rounded-xl bg-[#f6f1ea] text-[#141218]" title="Watch POS">
+            <Watch className="size-4" />
           </Link>
-          <div className="flex-1">{links}</div>
-          <div className="mt-4 border-t border-border pt-4">
-            <div className="mb-3 flex items-center gap-3 px-2">
-              <Avatar className="size-9">
-                <AvatarFallback className="bg-muted text-xs text-foreground">{initials}</AvatarFallback>
-              </Avatar>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{name}</p>
-                <p className="text-xs capitalize text-muted-foreground">{role}</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => signOut({ callbackUrl: "/login" })}
-              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-white/70"
-            >
-              <LogOut className="size-4" />
-              Log out
-            </button>
-          </div>
-        </aside>
-
-        <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex items-center gap-3 px-4 pt-4 lg:hidden">
-            <Sheet>
-              <SheetTrigger className="flex size-10 items-center justify-center rounded-full bg-white shadow-sm" aria-label="Open menu">
-                <Menu className="size-5" />
-              </SheetTrigger>
-              <SheetContent side="left" className="w-72 bg-background">
-                <div className="mb-6 flex items-center gap-2 font-semibold text-foreground">
-                  <Watch className="size-5 text-primary" />
-                  Watch POS
-                </div>
-                {links}
-              </SheetContent>
-            </Sheet>
-            <span className="font-semibold">Watch POS</span>
-          </div>
-          <div className="flex min-h-0 flex-1">
-            <main className="min-w-0 flex-1 bg-transparent px-4 py-6 text-foreground md:px-6">{children}</main>
-            <RightRail />
-          </div>
+          {!collapsed && (
+            <span>
+              <span className="block text-sm font-semibold tracking-tight">Watch POS</span>
+              <span className="block text-[10px] tracking-[0.14em] text-white/40 uppercase">Retail & repair</span>
+            </span>
+          )}
         </div>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <NavLinks role={role} pathname={pathname} collapsed={collapsed} />
+        </div>
+        <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-2">
+          <div className={cn("mb-1 flex items-center gap-2 px-1", collapsed && "justify-center")}>
+            <Avatar className="size-8">
+              <AvatarFallback className="bg-[#c4a574] text-[11px] font-semibold text-[#141218]">{initials}</AvatarFallback>
+            </Avatar>
+            {!collapsed && (
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-white">{name}</p>
+                <p className="text-xs capitalize text-white/45">{role}</p>
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setCollapsed((value) => !value)}
+            className="mb-1 flex w-full items-center justify-center gap-2 rounded-xl px-2 py-2 text-xs text-white/45 hover:bg-white/8 hover:text-white"
+          >
+            <PanelLeft className="size-4" />
+            {!collapsed && "Collapse"}
+          </button>
+          <button
+            type="button"
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            title="Log out"
+            className={cn(
+              "flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm text-white/55 hover:bg-white/8 hover:text-white",
+              collapsed && "justify-center",
+            )}
+          >
+            <LogOut className="size-4" />
+            {!collapsed && "Log out"}
+          </button>
+        </div>
+      </motion.aside>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-20 flex items-center gap-3 px-4 py-3 md:px-6">
+          <Sheet>
+            <SheetTrigger className="flex size-9 items-center justify-center rounded-xl border border-border bg-white lg:hidden" aria-label="Open menu">
+              <Menu className="size-4" />
+            </SheetTrigger>
+            <SheetContent side="left" className="w-72 border-white/10 bg-[#141218] text-[#f6f1ea]">
+              <div className="mb-6 flex items-center gap-2 text-sm font-semibold">
+                <Watch className="size-4" />
+                Watch POS
+              </div>
+              <NavLinks role={role} pathname={pathname} />
+            </SheetContent>
+          </Sheet>
+          <form
+            className="relative min-w-0 flex-1"
+            onSubmit={(event) => {
+              event.preventDefault();
+              router.push(q.trim() ? `/checkout?q=${encodeURIComponent(q.trim())}` : "/checkout");
+            }}
+          >
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              ref={searchRef}
+              value={q}
+              onChange={(event) => setQ(event.target.value)}
+              placeholder="Search products"
+              aria-label="Search products"
+              className="h-11 w-full rounded-2xl border border-border bg-white pl-9 pr-16 text-sm shadow-[var(--shadow-surface)] outline-none focus-visible:border-brand"
+            />
+            <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 rounded-md border border-border bg-surface-muted px-1.5 py-0.5 text-[10px] text-muted-foreground sm:inline">
+              ⌘K
+            </kbd>
+          </form>
+          <div className="hidden w-[220px] sm:block">
+            <ShiftBar />
+          </div>
+          <button
+            type="button"
+            aria-label="Notifications"
+            onClick={() => toast.message("No new alerts")}
+            className="flex size-11 items-center justify-center rounded-2xl border border-border bg-white text-muted-foreground shadow-[var(--shadow-surface)] hover:text-foreground"
+          >
+            <Bell className="size-4" />
+          </button>
+          <Link href="/checkout" className="hidden h-11 items-center rounded-2xl bg-brand px-4 text-sm font-medium text-white shadow-[0_8px_20px_rgb(61_53_196/0.28)] hover:bg-brand-hover md:inline-flex">
+            New sale
+          </Link>
+        </header>
+        <main className="min-w-0 flex-1 px-4 pb-8 md:px-6">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={pathname}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
+          <div className="mt-4 sm:hidden">
+            <ShiftBar />
+          </div>
+        </main>
       </div>
     </div>
   );

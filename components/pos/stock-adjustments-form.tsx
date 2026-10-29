@@ -84,7 +84,6 @@ export function StockAdjustmentsForm() {
   }, []);
 
   const loadHistory = useCallback(() => {
-    setLoadingHistory(true);
     fetch(`/api/stock-adjustments?page=${historyPage}&limit=8`)
       .then((r) => r.json())
       .then((j) => {
@@ -163,7 +162,7 @@ export function StockAdjustmentsForm() {
       </Link>
 
       <header>
-        <h1 className="text-2xl font-bold tracking-tight">Stock adjustments</h1>
+        <h1 className="text-4xl md:text-5xl">Stock adjustments</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Add or remove units. Use a positive number to restock, negative to write off.
         </p>
@@ -329,7 +328,7 @@ export function StockAdjustmentsForm() {
                 <Button
                   type="submit"
                   disabled={submitting || !productId || !deltaValid}
-                  className="min-h-11 rounded-xl bg-gradient-to-r from-primary to-violet-500 font-semibold shadow-[0_8px_20px_rgb(91_92_246/0.28)] hover:brightness-110 sm:min-w-[200px]"
+                  className="h-10 rounded-xl font-semibold sm:min-w-[200px]"
                 >
                   {submitting ? "Applying…" : "Apply adjustment"}
                 </Button>

@@ -127,10 +127,10 @@ export function SettingsForm() {
         initial={instant ? false : { opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="relative overflow-hidden rounded-[1.5rem] border border-white/60 bg-white/75 px-5 py-5 shadow-[0_16px_40px_rgb(120_140_180/0.1)] backdrop-blur-md dashboard-mesh"
+        className="pos-surface px-5 py-5"
       >
         <p className="mb-1 text-xs font-medium text-primary">Admin · configuration</p>
-        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Shop settings</h1>
+        <h1 className="text-4xl md:text-5xl">Shop settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Branding, receipts, and repair terms shown to customers.
         </p>
@@ -220,7 +220,7 @@ export function SettingsForm() {
           <Button
             type="submit"
             disabled={saving}
-            className="min-h-11 w-full rounded-xl bg-gradient-to-r from-primary to-violet-500 font-semibold shadow-[0_10px_24px_rgb(91_92_246/0.3)] hover:brightness-110 sm:w-auto sm:px-10"
+            className="h-10 w-full rounded-xl font-semibold sm:w-auto sm:px-10"
           >
             {saving ? "Saving…" : "Save settings"}
           </Button>

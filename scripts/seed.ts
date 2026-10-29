@@ -642,6 +642,11 @@ async function seedStockAdjustments(
 }
 
 async function main() {
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_DEMO_SEED !== "true") {
+    throw new Error(
+      "Refusing to seed demo users while NODE_ENV=production. Create staff from the admin screen, or set ALLOW_DEMO_SEED=true only on a disposable database.",
+    );
+  }
   await connectDb();
 
   await clearSeedTransactionalData();

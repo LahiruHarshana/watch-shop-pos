@@ -35,8 +35,16 @@ export function ShiftBar() {
   }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    let ignore = false;
+    fetch("/api/shifts")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (!ignore && json) setState(json.data);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   async function openShift() {
     const res = await fetch("/api/shifts", {
@@ -89,7 +97,7 @@ export function ShiftBar() {
           }
         }}
         className={cn(
-          "inline-flex w-full items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium transition",
+          "inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-border bg-white px-3 text-sm font-medium transition hover:border-brand/30",
           state.open
             ? "bg-muted text-foreground hover:bg-accent"
             : "bg-primary text-primary-foreground hover:brightness-110",
@@ -98,8 +106,7 @@ export function ShiftBar() {
         {state.open ? (
           <>
             <span className="text-muted-foreground">Shift open</span>
-            <span className="font-medium">{formatLkr(state.expectedCashCents)}</span>
-            <span className="hidden text-xs text-muted-foreground sm:inline">· tap to close</span>
+            <span className="metric font-medium">{formatLkr(state.expectedCashCents)}</span>
           </>
         ) : (
           <span>No open shift — tap to open</span>

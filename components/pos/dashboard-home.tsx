@@ -9,10 +9,10 @@ import {
   BarChart3,
   ChevronRight,
   Link2,
-  TrendingUp,
   Watch,
   Wrench,
 } from "lucide-react";
+import { EmptyState } from "@/components/pos/design";
 import { formatLkr } from "@/lib/money/format";
 import { statusLabels, statusPillClass } from "@/lib/repairs/status-style";
 import type { RepairStatus } from "@/models/RepairTicket";
@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 export type DashboardHomeProps = {
   firstName: string;
   todayCents: number;
+  repairCents: number;
   weekTotalCents: number;
   buckets: { label: string; cents: number; key: string; isToday: boolean }[];
   maxCents: number;
@@ -31,6 +32,7 @@ export type DashboardHomeProps = {
     watchBrand: string;
     watchModel: string;
     customerName: string;
+    estimatedCostCents: number;
   }[];
   shortcuts: { href: string; title: string; tone: string }[];
   lowStock?: {
@@ -76,6 +78,7 @@ function formatTodayLabel() {
 export function DashboardHome({
   firstName,
   todayCents,
+  repairCents,
   weekTotalCents,
   buckets,
   maxCents,
@@ -97,46 +100,46 @@ export function DashboardHome({
         },
       }}
     >
-      <motion.header
-        variants={fadeUp}
-        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        className="relative overflow-hidden rounded-[1.75rem] border border-white/60 bg-white/70 px-5 py-6 shadow-[0_20px_50px_rgb(120_140_180/0.12)] backdrop-blur-md md:px-7 dashboard-mesh"
-      >
-        <div className="relative flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="mb-2 inline-flex rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-              {formatTodayLabel()}
-            </p>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-              Welcome back,{" "}
-              <span className="bg-gradient-to-r from-primary to-violet-500 bg-clip-text text-transparent">
-                {firstName}
-              </span>
-            </h1>
-            <p className="mt-2 max-w-md text-sm text-muted-foreground">
-              Here&apos;s what&apos;s happening at the counter today.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <StatChip
-              label="Today's sales"
-              value={formatLkr(todayCents)}
-              icon={TrendingUp}
-              accent="primary"
-              index={0}
-              instant={instant}
-            />
-            <StatChip
-              label="Open repairs"
-              value={String(openRepairs.length)}
-              icon={Wrench}
-              accent="violet"
-              index={1}
-              instant={instant}
-            />
+      <motion.section variants={fadeUp} className="pos-ink relative overflow-hidden px-6 py-7 md:px-8 md:py-8">
+        <div className="pointer-events-none absolute -right-10 -bottom-16 size-56 rounded-full border border-white/10" aria-hidden />
+        <div className="pointer-events-none absolute right-6 -bottom-6 size-36 rounded-full border border-white/10" aria-hidden />
+        <div className="relative max-w-3xl">
+          <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-white/45">{formatTodayLabel()}</p>
+          <h1 className="mt-3 text-4xl text-[#f6f1ea] md:text-5xl">Good day, {firstName}</h1>
+          <p className="mt-3 max-w-md text-sm leading-relaxed text-white/60">
+            Counter activity for today, in Colombo time. Retail and repair collections sit together here.
+          </p>
+          <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/45">Today</p>
+              <p className="font-display metric mt-1 text-4xl text-[#f6f1ea] sm:text-5xl">{formatLkr(todayCents + repairCents)}</p>
+              <p className="mt-1 text-xs text-white/50">Retail and repairs</p>
+            </div>
+            <Link href="/checkout" className="inline-flex h-11 items-center rounded-2xl bg-[#f6f1ea] px-4 text-sm font-medium text-[#141218] hover:bg-white">
+              New sale
+            </Link>
           </div>
         </div>
-      </motion.header>
+        <dl className="relative mt-8 grid gap-px overflow-hidden rounded-2xl bg-white/10 sm:grid-cols-3">
+          <div className="bg-white/5 px-4 py-3">
+            <dt className="text-[11px] uppercase tracking-[0.14em] text-white/45">Retail</dt>
+            <dd className="metric mt-1 text-lg text-[#f6f1ea]">{formatLkr(todayCents)}</dd>
+          </div>
+          <div className="bg-white/5 px-4 py-3">
+            <dt className="text-[11px] uppercase tracking-[0.14em] text-white/45">Repairs</dt>
+            <dd className="metric mt-1 text-lg text-[#f6f1ea]">{formatLkr(repairCents)}</dd>
+          </div>
+          <div className="bg-white/5 px-4 py-3">
+            <dt className="text-[11px] uppercase tracking-[0.14em] text-white/45">Open jobs</dt>
+            <dd className="metric mt-1 text-lg text-[#f6f1ea]">
+              {openRepairs.length}
+              <span className="ml-2 text-xs font-sans text-white/45">
+                {lowStock.length ? `${lowStock.length} low stock` : "stock healthy"}
+              </span>
+            </dd>
+          </div>
+        </dl>
+      </motion.section>
 
       <motion.section variants={sectionReveal}>
         <SectionHeading
@@ -145,12 +148,12 @@ export function DashboardHome({
           subtitle={`${formatLkr(weekTotalCents)} this week`}
           href="/reports/daily"
         />
-        <div className="relative overflow-hidden rounded-[1.5rem] border border-border/80 bg-card p-5 shadow-[0_16px_40px_rgb(120_140_180/0.1)] dashboard-mesh">
+        <div className="pos-surface relative overflow-hidden p-5 md:p-6">
           <div
             className="pointer-events-none absolute inset-x-6 bottom-14 top-16 border-b border-dashed border-border/70"
             aria-hidden
           />
-          <div className="relative flex h-52 items-end gap-1.5 sm:gap-2.5">
+          <div className="relative flex h-52 min-w-0 items-end gap-1 sm:gap-2">
             {buckets.map((b, i) => {
               const max = Math.max(maxCents, 1);
               const targetH = b.cents > 0
@@ -180,20 +183,22 @@ export function DashboardHome({
             subtitle="Items at or below their alert level"
             href="/inventory/products?stock=low"
           />
-          <ul className="grid gap-2 sm:grid-cols-2">
+          <ul className="pos-surface divide-y divide-border overflow-hidden">
             {lowStock.map((item) => (
               <li key={item.id}>
                 <Link
                   href={`/inventory/products/${item.id}`}
-                  className="flex items-center justify-between rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm"
+                  className="flex items-center justify-between gap-3 border-l-2 border-[#b08968] px-4 py-3 text-sm hover:bg-surface-muted"
                 >
                   <span>
-                    <span className="font-medium text-amber-950">
-                      Alert: {item.name} below {item.lowStockThreshold} units
+                    <span className="font-medium text-foreground">
+                      {item.name}
                     </span>
-                    <span className="mt-0.5 block font-mono text-[11px] text-amber-800/80">{item.sku}</span>
+                    <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                      {item.sku} · alert below {item.lowStockThreshold}
+                    </span>
                   </span>
-                  <span className="font-bold text-amber-900">{item.quantity}</span>
+                  <span className="metric text-lg font-semibold text-[#9a6700]">{item.quantity}</span>
                 </Link>
               </li>
             ))}
@@ -204,7 +209,7 @@ export function DashboardHome({
       <motion.section variants={sectionReveal}>
         <SectionHeading icon={Wrench} title="Open repairs" href="/repairs" />
         {openRepairs.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No watches in the shop.</p>
+          <EmptyState title="No watches in the shop" description="New repair tickets will show up here." />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
             {openRepairs.map((t, i) => (
@@ -269,52 +274,6 @@ function SectionHeading({
   );
 }
 
-function StatChip({
-  label,
-  value,
-  icon: Icon,
-  accent,
-  index,
-  instant,
-}: {
-  label: string;
-  value: string;
-  icon: typeof TrendingUp;
-  accent: "primary" | "violet";
-  index: number;
-  instant: boolean;
-}) {
-  return (
-    <motion.div
-      className={cn(
-        "min-w-[140px] rounded-2xl border border-white/80 bg-white/90 px-4 py-3.5 shadow-[0_10px_30px_rgb(120_140_180/0.12)] backdrop-blur-sm",
-        accent === "primary" ? "ring-1 ring-primary/10" : "ring-1 ring-violet-500/10",
-      )}
-      initial={instant ? false : { opacity: 0, y: 12, scale: 0.96 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{
-        delay: instant ? 0 : 0.12 + index * 0.08,
-        duration: 0.4,
-        ease: [0.22, 1, 0.36, 1],
-      }}
-      whileHover={instant ? undefined : { y: -2, scale: 1.02 }}
-    >
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-xs font-medium text-muted-foreground">{label}</p>
-        <span
-          className={cn(
-            "flex size-7 items-center justify-center rounded-lg",
-            accent === "primary" ? "bg-primary/15 text-primary" : "bg-violet-500/15 text-violet-600",
-          )}
-        >
-          <Icon className="size-3.5" aria-hidden />
-        </span>
-      </div>
-      <p className="text-lg font-bold tracking-tight text-foreground">{value}</p>
-    </motion.div>
-  );
-}
-
 function ActivityBar({
   label,
   cents,
@@ -333,10 +292,10 @@ function ActivityBar({
   const hasSales = cents > 0;
 
   return (
-    <div className="group flex flex-1 flex-col items-center gap-2">
+    <div className="group flex min-w-0 flex-1 flex-col items-center gap-2">
       <motion.span
         className={cn(
-          "min-h-[14px] text-[10px] font-semibold sm:text-[11px]",
+          "w-full min-h-[14px] truncate text-center text-[10px] font-semibold sm:text-[11px]",
           isToday && "text-primary",
           !isToday && hasSales && "text-foreground/70",
           !isToday && !hasSales && "text-transparent group-hover:text-muted-foreground",
@@ -349,12 +308,12 @@ function ActivityBar({
       <div className="flex h-[128px] w-full max-w-10 items-end justify-center">
         <motion.div
           className={cn(
-            "w-full max-w-9 rounded-full border border-indigo-200/60",
+            "w-full max-w-8 rounded-t-md",
             isToday
-              ? "border-transparent bg-gradient-to-t from-primary to-violet-400 dashboard-bar-glow"
+              ? "bg-brand dashboard-bar-glow"
               : hasSales
-                ? "bg-gradient-to-t from-indigo-400/70 to-indigo-200 group-hover:from-primary/80 group-hover:to-violet-300"
-                : "bg-indigo-100/90 group-hover:bg-indigo-200/90",
+                ? "bg-[#2a2633] group-hover:bg-brand"
+                : "bg-[#e4ddd2] group-hover:bg-[#d4cdc2]",
           )}
           initial={instant ? { height: targetHeight } : { height: 0 }}
           animate={{ height: targetHeight }}
@@ -406,7 +365,7 @@ function RepairCard({
     >
       <Link
         href={`/repairs/${ticket.id}`}
-        className="group relative flex overflow-hidden rounded-[1.35rem] border border-border/80 bg-card p-4 shadow-[0_10px_28px_rgb(120_140_180/0.1)] transition-shadow hover:shadow-[0_20px_40px_rgb(120_140_180/0.16)]"
+        className="group relative flex overflow-hidden rounded-[1.25rem] border border-border bg-card p-4 shadow-[var(--shadow-surface)] transition-shadow hover:shadow-[var(--shadow-raised)]"
       >
         <span
           className={cn(
@@ -426,7 +385,10 @@ function RepairCard({
             <span className={statusPillClass(ticket.status)}>{statusLabels[ticket.status]}</span>
           </div>
           <div className="mt-4 flex items-center justify-between gap-2">
-            <p className="truncate text-xs text-muted-foreground">{ticket.customerName}</p>
+            <div className="min-w-0">
+              <p className="truncate text-xs text-muted-foreground">{ticket.customerName}</p>
+              <p className="metric text-sm font-semibold">{formatLkr(ticket.estimatedCostCents)}</p>
+            </div>
             <span
               className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors group-hover:bg-primary group-hover:text-primary-foreground"
               aria-hidden
@@ -466,14 +428,10 @@ function ShortcutTile({
     >
       <Link
         href={shortcut.href}
-        className={cn(
-          "group relative block overflow-hidden rounded-[1.5rem] p-5 shadow-sm transition-shadow hover:shadow-xl",
-          shortcut.tone,
-        )}
+        className="group relative block overflow-hidden rounded-[1.25rem] border border-border bg-card p-5 shadow-[var(--shadow-surface)] transition-shadow hover:shadow-[var(--shadow-raised)]"
       >
-        <div className="pointer-events-none absolute -right-6 -top-6 size-24 rounded-full bg-white/40 blur-2xl" />
         <div className="relative mb-6 flex items-start justify-between">
-          <span className="flex size-12 items-center justify-center rounded-2xl bg-white/70 text-foreground shadow-sm ring-1 ring-white/80 backdrop-blur-sm">
+          <span className="flex size-11 items-center justify-center rounded-xl bg-[#141218] text-[#f6f1ea]">
             <Icon className="size-6" aria-hidden />
           </span>
           <ArrowRight

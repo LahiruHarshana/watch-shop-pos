@@ -46,7 +46,8 @@ export function ProductDetailClient({
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "admin";
   const [product, setProduct] = useState(initial);
-  const [editing, setEditing] = useState(false);
+  const [editingOverride, setEditingOverride] = useState<boolean | null>(null);
+  const editing = editingOverride ?? Boolean(startEditing && isAdmin);
   const [categories, setCategories] = useState<Category[]>([]);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<ProductFormValues>({
@@ -65,10 +66,6 @@ export function ProductDetailClient({
     fetch("/api/categories").then((r) => r.json()).then((j) => setCategories(j.data ?? []));
   }, []);
 
-  useEffect(() => {
-    if (startEditing && session?.user?.role === "admin") setEditing(true);
-  }, [startEditing, session?.user?.role]);
-
   const low =
     product.quantity <= (product.lowStockThreshold ?? 10);
 
@@ -83,7 +80,6 @@ export function ProductDetailClient({
         sku: form.sku,
         categoryId: form.categoryId,
         priceCents: parseLkrInput(form.price),
-        quantity: Number(form.quantity),
         lowStockThreshold: Number(form.lowStockThreshold),
         isActive: form.isActive,
         attributes: {
@@ -99,13 +95,13 @@ export function ProductDetailClient({
       return;
     }
     setProduct(json.data);
-    setEditing(false);
+    setEditingOverride(false);
     toast.success("Product updated");
     router.refresh();
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className="mx-auto max-w-5xl space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
           href="/inventory/products"
@@ -121,7 +117,7 @@ export function ProductDetailClient({
               variant="outline"
               size="sm"
               className="rounded-xl"
-              onClick={() => setEditing(true)}
+              onClick={() => setEditingOverride(true)}
             >
               <Pencil className="mr-1.5 size-4" aria-hidden />
               Edit product
@@ -165,7 +161,8 @@ export function ProductDetailClient({
               onSubmit={save}
               submitLabel={saving ? "Saving…" : "Save changes"}
               disabled={saving}
-              onCancel={() => setEditing(false)}
+              lockQuantity
+              onCancel={() => setEditingOverride(false)}
             />
           </div>
         </div>

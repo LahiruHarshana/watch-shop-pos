@@ -22,7 +22,6 @@ const PATCH_FIELDS = [
   "categoryId",
   "priceCents",
   "costCents",
-  "quantity",
   "lowStockThreshold",
   "trackInventory",
   "isActive",

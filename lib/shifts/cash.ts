@@ -1,4 +1,6 @@
 import { Sale } from "@/models/Sale";
+import { RepairTicket } from "@/models/RepairTicket";
+import { expectedCashFromEvents } from "@/lib/shifts/expected-cash";
 import type { Types } from "mongoose";
 
 export async function calculateExpectedCashCents(
@@ -8,31 +10,26 @@ export async function calculateExpectedCashCents(
   closedAt?: Date,
 ) {
   const end = closedAt ?? new Date();
-  const sales = await Sale.find({
-    shiftId,
-    status: "completed",
-    createdAt: { $gte: openedAt, $lte: end },
-  }).lean();
+  const window = { $gte: openedAt, $lte: end };
+  const [completedSales, voidedSales, repairs] = await Promise.all([
+    Sale.find({ shiftId, status: "completed", createdAt: window }).select("payments").lean(),
+    Sale.find({ shiftId, status: "voided", voidedAt: window }).select("payments").lean(),
+    RepairTicket.find({
+      status: "delivered",
+      "payment.method": "cash",
+      "payment.paidAt": window,
+    })
+      .select("payment")
+      .lean(),
+  ]);
 
-  let cashIn = 0;
-  for (const sale of sales) {
-    for (const p of sale.payments) {
-      if (p.method === "cash") cashIn += p.amountCents;
-    }
-  }
-
-  const voided = await Sale.find({
-    shiftId,
-    status: "voided",
-    voidedAt: { $gte: openedAt, $lte: end },
-  }).lean();
-
-  let cashOut = 0;
-  for (const sale of voided) {
-    for (const p of sale.payments) {
-      if (p.method === "cash") cashOut += p.amountCents;
-    }
-  }
-
-  return openingFloatCents + cashIn - cashOut;
+  return expectedCashFromEvents({
+    openingFloatCents,
+    completedSales,
+    voidedSales,
+    repairPayments: repairs.map((ticket) => ({
+      method: ticket.payment?.method ?? undefined,
+      amountCents: ticket.payment?.amountCents ?? undefined,
+    })),
+  });
 }
