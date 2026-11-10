@@ -1,5 +1,6 @@
 "use client";
 
+import { readResponseJson } from "@/lib/api/read-response-json";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -183,14 +184,18 @@ export function CheckoutClient() {
         payments,
       }),
     });
-    const json = await res.json();
+    const json = await readResponseJson(res);
     setLoading(false);
     if (!res.ok) {
-      toast.error(json.error?.message ?? "Sale failed");
+      toast.error(
+        json.error?.message ??
+          (res.status >= 500 ? "Server error — check MongoDB is running" : "Sale failed"),
+      );
       return;
     }
-    toast.success(`Sale completed — ${json.data.invoiceNumber}`);
-    router.push(`/sales/${json.data._id}`);
+    const sale = json.data as { invoiceNumber: string; _id: string };
+    toast.success(`Sale completed — ${sale.invoiceNumber}`);
+    router.push(`/sales/${sale._id}`);
   }
 
   return (
@@ -562,14 +567,14 @@ function CartLineItem({
       animate={{ opacity: 1, height: "auto" }}
       exit={{ opacity: 0, height: 0, marginBottom: 0 }}
       transition={{ duration: 0.25 }}
-      className="overflow-hidden rounded-2xl border border-border/60 bg-white p-3 shadow-sm"
+      className="overflow-hidden rounded-2xl border border-border bg-white p-3 text-foreground shadow-sm"
     >
       <div className="flex justify-between gap-2">
         <div className="min-w-0">
-          <p className="truncate font-medium text-sm">{line.name}</p>
+          <p className="truncate text-sm font-medium text-foreground">{line.name}</p>
           <p className="text-xs text-muted-foreground">{line.sku}</p>
         </div>
-        <Button variant="ghost" size="icon" className="shrink-0 rounded-xl" onClick={onRemove}>
+        <Button variant="ghost" size="icon" className="shrink-0 rounded-xl text-muted-foreground hover:text-foreground" onClick={onRemove}>
           <Trash2 className="size-4" />
         </Button>
       </div>
@@ -577,21 +582,21 @@ function CartLineItem({
         <Button
           size="icon"
           variant="outline"
-          className="size-9 rounded-xl"
+          className="size-9 rounded-xl border-border bg-white text-foreground"
           onClick={onDecrement}
         >
           <Minus className="size-4" />
         </Button>
-        <span className="w-8 text-center font-semibold">{line.quantity}</span>
+        <span className="w-8 text-center font-semibold text-foreground">{line.quantity}</span>
         <Button
           size="icon"
           variant="outline"
-          className="size-9 rounded-xl"
+          className="size-9 rounded-xl border-border bg-white text-foreground"
           onClick={onIncrement}
         >
           <Plus className="size-4" />
         </Button>
-        <span className="ml-auto text-sm font-bold">{formatLkr(lineTotal)}</span>
+        <span className="ml-auto text-sm font-semibold text-foreground">{formatLkr(lineTotal)}</span>
       </div>
       <div className="mt-2 grid grid-cols-2 gap-2">
         <Select
@@ -601,7 +606,7 @@ function CartLineItem({
             else onDiscount({ type: v as DiscountType, value: line.lineDiscount?.value ?? 0 });
           }}
         >
-          <SelectTrigger className="h-8 rounded-lg bg-white text-xs">
+          <SelectTrigger className="h-8 rounded-lg border-border bg-white text-xs text-foreground">
             <SelectValue placeholder="Line discount" />
           </SelectTrigger>
           <SelectContent>
@@ -612,7 +617,7 @@ function CartLineItem({
         </Select>
         {line.lineDiscount && (
           <Input
-            className="h-8 rounded-lg bg-white text-xs"
+            className="h-8 rounded-lg border-border bg-white text-xs text-foreground"
             placeholder={line.lineDiscount.type === "flat" ? "LKR" : "%"}
             value={
               line.lineDiscount.type === "flat"

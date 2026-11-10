@@ -172,6 +172,11 @@
     color: #f6f1ea;
     box-shadow: var(--shadow-floating);
   }
+  /* Light cards inside a cream-on-dark panel must not inherit that cream text. */
+  .pos-ink :is(.bg-white, .bg-card, .bg-background, .bg-popover, .bg-surface),
+  .bg-\[\#141218\] :is(.bg-white, .bg-card, .bg-background, .bg-popover, .bg-surface) {
+    color: var(--foreground);
+  }
   .pos-raised {
     border-radius: 16px;
     background: var(--surface);

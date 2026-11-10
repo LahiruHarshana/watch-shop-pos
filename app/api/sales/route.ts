@@ -1,5 +1,9 @@
-import mongoose from "mongoose";
+import type { ClientSession } from "mongoose";
 import { connectDb } from "@/lib/db/mongoose";
+import {
+  abortTransactionIfActive,
+  withOptionalTransaction,
+} from "@/lib/db/with-optional-transaction";
 import { requireRole } from "@/lib/api/auth-guard";
 import { jsonError, jsonOk, jsonPaginated } from "@/lib/api/response";
 import { buildPaginationMeta, parsePagination } from "@/lib/api/pagination";
@@ -96,81 +100,86 @@ export async function POST(request: Request) {
     }
   }
 
-  const session = await mongoose.startSession();
   try {
-    session.startTransaction();
-    const enrichedLines = [];
-    for (const line of lineItems) {
-      const product = await Product.findById(line.productId).session(session);
-      if (!product) {
-        await session.abortTransaction();
-        return jsonError("NOT_FOUND", `Product not found`, 404);
-      }
-      if (product.trackInventory && product.quantity < line.quantity) {
-        await session.abortTransaction();
-        return jsonError(
-          "STOCK_INSUFFICIENT",
-          `Not enough stock for ${product.name}. Available: ${product.quantity}.`,
-          400,
-        );
-      }
-      const lineTotal = calculateSaleTotals(
-        [{ unitPriceCents: line.unitPriceCents, quantity: line.quantity, lineDiscount: line.lineDiscount }],
-      ).totalCents;
-      if (product.trackInventory) {
-        product.quantity -= line.quantity;
-        await product.save({ session });
-      }
-      enrichedLines.push({
-        productId: product._id,
-        name: product.name,
-        sku: product.sku,
-        quantity: line.quantity,
-        unitPriceCents: line.unitPriceCents,
-        lineDiscount: line.lineDiscount
-          ? {
-              ...line.lineDiscount,
-              amountCents:
-                line.unitPriceCents * line.quantity - lineTotal,
-            }
-          : undefined,
-        lineTotalCents: lineTotal,
-      });
-    }
+    return await withOptionalTransaction(async (session) => {
+      const productQuery = (id: string) => {
+        const query = Product.findById(id);
+        return session ? query.session(session) : query;
+      };
 
-    const invoiceNumber = await generateInvoiceNumber();
-    const cartDiscountDoc = cartDiscount
-      ? {
-          type: cartDiscount.type,
-          value: cartDiscount.value,
-          amountCents: totals.cartDiscountCents,
+      const enrichedLines = [];
+      for (const line of lineItems) {
+        const product = await productQuery(line.productId);
+        if (!product) {
+          await abortTransactionIfActive(session);
+          return jsonError("NOT_FOUND", `Product not found`, 404);
         }
-      : undefined;
+        if (product.trackInventory && product.quantity < line.quantity) {
+          await abortTransactionIfActive(session);
+          return jsonError(
+            "STOCK_INSUFFICIENT",
+            `Not enough stock for ${product.name}. Available: ${product.quantity}.`,
+            400,
+          );
+        }
+        const lineTotal = calculateSaleTotals([
+          {
+            unitPriceCents: line.unitPriceCents,
+            quantity: line.quantity,
+            lineDiscount: line.lineDiscount,
+          },
+        ]).totalCents;
+        if (product.trackInventory) {
+          product.quantity -= line.quantity;
+          await product.save(session ? { session } : undefined);
+        }
+        enrichedLines.push({
+          productId: product._id,
+          name: product.name,
+          sku: product.sku,
+          quantity: line.quantity,
+          unitPriceCents: line.unitPriceCents,
+          lineDiscount: line.lineDiscount
+            ? {
+                ...line.lineDiscount,
+                amountCents: line.unitPriceCents * line.quantity - lineTotal,
+              }
+            : undefined,
+          lineTotalCents: lineTotal,
+        });
+      }
 
-    const sale = await Sale.create(
-      [
-        {
-          invoiceNumber,
-          lineItems: enrichedLines,
-          cartDiscount: cartDiscountDoc,
-          subtotalCents: totals.subtotalCents,
-          discountTotalCents: totals.discountTotalCents,
-          totalCents: totals.totalCents,
-          payments,
-          soldBy: user!.id,
-          discountAppliedBy: totals.discountTotalCents > 0 ? user!.id : undefined,
-          shiftId: openShift._id,
-        },
-      ],
-      { session },
-    );
+      const invoiceNumber = await generateInvoiceNumber();
+      const cartDiscountDoc = cartDiscount
+        ? {
+            type: cartDiscount.type,
+            value: cartDiscount.value,
+            amountCents: totals.cartDiscountCents,
+          }
+        : undefined;
 
-    await session.commitTransaction();
-    return jsonOk(sale[0], 201);
+      const saleDoc = {
+        invoiceNumber,
+        lineItems: enrichedLines,
+        cartDiscount: cartDiscountDoc,
+        subtotalCents: totals.subtotalCents,
+        discountTotalCents: totals.discountTotalCents,
+        totalCents: totals.totalCents,
+        payments,
+        soldBy: user!.id,
+        discountAppliedBy: totals.discountTotalCents > 0 ? user!.id : undefined,
+        shiftId: openShift._id,
+      };
+
+      const sale = session
+        ? await Sale.create([saleDoc], { session: session as ClientSession })
+        : await Sale.create([saleDoc]);
+
+      return jsonOk(sale[0], 201);
+    });
   } catch (e) {
-    await session.abortTransaction();
-    throw e;
-  } finally {
-    session.endSession();
+    console.error("POST /api/sales failed:", e);
+    const message = e instanceof Error ? e.message : "Sale could not be completed";
+    return jsonError("SERVER_ERROR", message, 500);
   }
 }
