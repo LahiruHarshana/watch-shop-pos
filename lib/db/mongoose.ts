@@ -30,6 +30,7 @@ export async function connectDb(): Promise<typeof mongoose> {
     return cached.conn;
   }
   if (!cached.promise) {
+    console.log("🔌 Active MongoDB URI being used:", process.env.MONGODB_URI);
     cached.promise = mongoose.connect(MONGODB_URI!, {
       bufferCommands: false,
     });
