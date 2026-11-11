@@ -75,8 +75,9 @@ export function ProductForm({
           </Field>
           <Field label="Category">
             <Select
-              value={values.categoryId || undefined}
-              onValueChange={(v) => v && onChange({ ...values, categoryId: v })}
+              value={values.categoryId || null}
+              items={categories.map((c) => ({ value: c._id, label: c.name }))}
+              onValueChange={(v) => onChange({ ...values, categoryId: v ?? "" })}
             >
               <SelectTrigger className={inputClass}>
                 <SelectValue placeholder="Choose category" />

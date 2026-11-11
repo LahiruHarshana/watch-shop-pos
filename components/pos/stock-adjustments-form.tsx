@@ -184,7 +184,14 @@ export function StockAdjustmentsForm() {
             <div className="space-y-5 p-5 sm:p-6">
               <FormSection title="Which product?" description="Pick the SKU you are adjusting.">
                 <Field label="Product" hint="Search by name in the list.">
-                  <Select value={productId || undefined} onValueChange={(v) => v && setProductId(v)}>
+                  <Select
+                    value={productId || null}
+                    items={products.map((p) => ({
+                      value: p._id,
+                      label: `${p.name} — ${p.sku} (${p.quantity} on hand)`,
+                    }))}
+                    onValueChange={(v) => setProductId(v ?? "")}
+                  >
                     <SelectTrigger className={inputClass}>
                       <SelectValue placeholder="Choose product…" />
                     </SelectTrigger>
