@@ -1,5 +1,9 @@
 import mongoose from "mongoose";
 import { connectDb } from "@/lib/db/mongoose";
+import {
+  abortTransactionIfActive,
+  withOptionalTransaction,
+} from "@/lib/db/with-optional-transaction";
 import { requireRole } from "@/lib/api/auth-guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
 import { Product } from "@/models/Product";
@@ -17,36 +21,36 @@ export async function POST(
     return jsonError("VALIDATION", "Void reason required", 400);
   }
   await connectDb();
-  const session = await mongoose.startSession();
   try {
-    session.startTransaction();
-    const sale = await Sale.findById(id).session(session);
-    if (!sale) {
-      await session.abortTransaction();
-      return jsonError("NOT_FOUND", "Sale not found", 404);
-    }
-    if (sale.status === "voided") {
-      await session.abortTransaction();
-      return jsonError("VALIDATION", "Sale already voided", 400);
-    }
-    for (const line of sale.lineItems) {
-      const product = await Product.findById(line.productId).session(session);
-      if (product?.trackInventory) {
-        product.quantity += line.quantity;
-        await product.save({ session });
+    return await withOptionalTransaction(async (session) => {
+      const saleQuery = Sale.findById(id);
+      const sale = session ? await saleQuery.session(session) : await saleQuery;
+      if (!sale) {
+        await abortTransactionIfActive(session);
+        return jsonError("NOT_FOUND", "Sale not found", 404);
       }
-    }
-    sale.status = "voided";
-    sale.voidReason = body.voidReason;
-    sale.voidedBy = new mongoose.Types.ObjectId(user!.id);
-    sale.voidedAt = new Date();
-    await sale.save({ session });
-    await session.commitTransaction();
-    return jsonOk(sale);
-  } catch (e) {
-    await session.abortTransaction();
-    throw e;
-  } finally {
-    session.endSession();
+      if (sale.status === "voided") {
+        await abortTransactionIfActive(session);
+        return jsonError("VALIDATION", "Sale already voided", 400);
+      }
+      for (const line of sale.lineItems) {
+        const productQuery = Product.findById(line.productId);
+        const product = session ? await productQuery.session(session) : await productQuery;
+        if (product?.trackInventory) {
+          product.quantity += line.quantity;
+          await product.save(session ? { session } : undefined);
+        }
+      }
+      sale.status = "voided";
+      sale.voidReason = body.voidReason;
+      sale.voidedBy = new mongoose.Types.ObjectId(user!.id);
+      sale.voidedAt = new Date();
+      await sale.save(session ? { session } : undefined);
+      return jsonOk(sale);
+    });
+  } catch (error) {
+    console.error("POST /api/sales/[id]/void failed:", error);
+    const message = error instanceof Error ? error.message : "Sale could not be voided";
+    return jsonError("SERVER_ERROR", message, 500);
   }
 }

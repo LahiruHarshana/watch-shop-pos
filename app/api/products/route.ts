@@ -5,7 +5,7 @@ import { buildPaginationMeta, parsePagination } from "@/lib/api/pagination";
 import { buildProductListQuery } from "@/lib/products/product-list-query";
 import { Product } from "@/models/Product";
 import { StockAdjustment } from "@/models/StockAdjustment";
-import mongoose from "mongoose";
+import { withOptionalTransaction } from "@/lib/db/with-optional-transaction";
 
 export async function GET(request: Request) {
   const { user, response } = await requireSession();
@@ -70,35 +70,35 @@ export async function POST(request: Request) {
   if (!Number.isInteger(quantity) || quantity < 0) {
     return jsonError("VALIDATION", "Opening quantity cannot be negative", 400);
   }
-  const session = await mongoose.startSession();
+  const productDoc = { ...body, sku: String(body.sku).toUpperCase(), quantity };
   try {
-    session.startTransaction();
-    const created = await Product.create(
-      [{ ...body, sku: String(body.sku).toUpperCase(), quantity }],
-      { session },
-    );
-    const product = created[0];
-    if (quantity > 0) {
-      await StockAdjustment.create(
-        [{
+    return await withOptionalTransaction(async (session) => {
+      const created = session
+        ? await Product.create([productDoc], { session })
+        : await Product.create([productDoc]);
+      const product = created[0];
+      if (quantity > 0) {
+        const opening = {
           productId: product._id,
           delta: quantity,
           reason: "purchase",
           note: "Opening stock",
           performedBy: user!.id,
-        }],
-        { session },
-      );
-    }
-    await session.commitTransaction();
-    return jsonOk(product, 201);
+        };
+        if (session) {
+          await StockAdjustment.create([opening], { session });
+        } else {
+          await StockAdjustment.create([opening]);
+        }
+      }
+      return jsonOk(product, 201);
+    });
   } catch (error) {
-    await session.abortTransaction();
     if ((error as { code?: number }).code === 11000) {
       return jsonError("CONFLICT", "SKU already exists", 409);
     }
-    throw error;
-  } finally {
-    session.endSession();
+    console.error("POST /api/products failed:", error);
+    const message = error instanceof Error ? error.message : "Product could not be created";
+    return jsonError("SERVER_ERROR", message, 500);
   }
 }

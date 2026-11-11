@@ -5,7 +5,12 @@ import { uploadImageBuffer } from "@/lib/cloudinary/upload";
 export async function POST(request: Request) {
   const { response } = await requireRole(["admin"]);
   if (response) return response;
-  const form = await request.formData();
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch {
+    return jsonError("VALIDATION", "File required", 400);
+  }
   const file = form.get("file");
   if (!file || !(file instanceof File)) {
     return jsonError("VALIDATION", "File required", 400);

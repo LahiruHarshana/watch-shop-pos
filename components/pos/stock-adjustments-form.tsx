@@ -15,6 +15,7 @@ import {
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
+import { readResponseJson } from "@/lib/api/read-response-json";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -129,7 +130,7 @@ export function StockAdjustmentsForm() {
         note: note.trim() || undefined,
       }),
     });
-    const json = await res.json();
+    const json = await readResponseJson(res);
     setSubmitting(false);
     if (!res.ok) {
       toast.error(json.error?.message ?? "Failed");
