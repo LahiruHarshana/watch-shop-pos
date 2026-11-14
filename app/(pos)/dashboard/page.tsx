@@ -65,7 +65,7 @@ export default async function DashboardPage() {
         .lean()
     : [];
 
-  const openJobFilter = { status: { $ne: "delivered" } };
+  const openJobFilter = { status: { $ne: "delivered" as const } };
   const [openJobCount, openRepairs] = await Promise.all([
     RepairTicket.countDocuments(openJobFilter),
     RepairTicket.find(openJobFilter).sort({ updatedAt: -1 }).limit(4).lean(),

@@ -90,13 +90,20 @@ export async function POST(request: Request) {
   if (brandError) return jsonError("VALIDATION", brandError, 400);
   const modelError = watchTextError(body.watchModel, "model");
   if (modelError) return jsonError("VALIDATION", modelError, 400);
+  const customerName = normalizeCustomerName(body.customerName);
+  const customerPhone = normalizeSriLankaPhone(body.customerPhone);
+  const watchBrand = normalizeWatchText(body.watchBrand, "watch brand");
+  const watchModel = normalizeWatchText(body.watchModel, "model");
+  if (!customerName || !customerPhone || !watchBrand || !watchModel) {
+    return jsonError("VALIDATION", "Invalid repair details", 400);
+  }
   const ticketId = await generateRepairTicketId();
   const ticket = await RepairTicket.create({
     ticketId,
-    customerName: normalizeCustomerName(body.customerName),
-    customerPhone: normalizeSriLankaPhone(body.customerPhone),
-    watchBrand: normalizeWatchText(body.watchBrand, "watch brand"),
-    watchModel: normalizeWatchText(body.watchModel, "model"),
+    customerName,
+    customerPhone,
+    watchBrand,
+    watchModel,
     issueDescription: body.issueDescription,
     estimatedCostCents: body.estimatedCostCents,
     intakePhotoUrl: body.intakePhotoUrl,

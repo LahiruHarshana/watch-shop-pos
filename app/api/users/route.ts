@@ -42,10 +42,12 @@ export async function POST(request: Request) {
   if (nameError) return jsonError("VALIDATION", nameError, 400);
   const exists = await User.findOne({ email: String(email).toLowerCase() });
   if (exists) return jsonError("CONFLICT", "Email already in use", 409);
+  const staffName = normalizeStaffName(name);
+  if (!staffName) return jsonError("VALIDATION", "Invalid name", 400);
   const passwordHash = await bcrypt.hash(String(password), 12);
   const user = await User.create({
     email: String(email).toLowerCase(),
-    name: normalizeStaffName(name),
+    name: staffName,
     passwordHash,
     role,
     isActive: true,

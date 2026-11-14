@@ -84,7 +84,7 @@ export async function POST(request: Request) {
         const opening = {
           productId: product._id,
           delta: quantity,
-          reason: "purchase",
+          reason: "purchase" as const,
           note: "Opening stock",
           performedBy: user!.id,
         };
