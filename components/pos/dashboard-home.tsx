@@ -7,12 +7,14 @@ import {
   ArrowRight,
   ArrowUpRight,
   BarChart3,
+  Wallet,
   ChevronRight,
   Link2,
   Watch,
   Wrench,
 } from "lucide-react";
 import { EmptyState } from "@/components/pos/design";
+import { ExpenseBreakdown } from "@/components/pos/expense-breakdown";
 import { formatLkr } from "@/lib/money/format";
 import { statusLabels, statusPillClass } from "@/lib/repairs/status-style";
 import type { RepairStatus } from "@/models/RepairTicket";
@@ -43,6 +45,13 @@ export type DashboardHomeProps = {
     quantity: number;
     lowStockThreshold: number;
   }[];
+  expenseToday: {
+    totalCents: number;
+    count: number;
+    topCategory: string | null;
+    categories: { name: string; amountCents: number }[];
+  };
+  expenseDays: { label: string; cents: number; key: string; isToday: boolean }[];
 };
 
 const fadeUp = {
@@ -87,6 +96,8 @@ export function DashboardHome({
   openRepairs,
   shortcuts,
   lowStock = [],
+  expenseToday,
+  expenseDays,
 }: DashboardHomeProps) {
   const reduceMotion = useReducedMotion();
   const instant = reduceMotion === true;
@@ -115,14 +126,16 @@ export function DashboardHome({
             <div>
               <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/45">Today</p>
               <p className="font-display metric mt-1 text-4xl text-[#f6f1ea] sm:text-5xl">{formatLkr(todayCents + repairCents)}</p>
-              <p className="mt-1 text-xs text-white/50">Retail and repairs</p>
+              <p className="mt-1 text-xs text-white/50">
+                Retail and repairs · net {formatLkr(todayCents + repairCents - expenseToday.totalCents)}
+              </p>
             </div>
             <Link href="/checkout" className="inline-flex h-11 items-center rounded-2xl bg-[#f6f1ea] px-4 text-sm font-medium text-[#141218] hover:bg-white">
               New sale
             </Link>
           </div>
         </div>
-        <dl className="relative mt-8 grid gap-px overflow-hidden rounded-2xl bg-white/10 sm:grid-cols-3">
+        <dl className="relative mt-8 grid gap-px overflow-hidden rounded-2xl bg-white/10 sm:grid-cols-4">
           <div className="bg-white/5 px-4 py-3">
             <dt className="text-[11px] uppercase tracking-[0.14em] text-white/45">Retail</dt>
             <dd className="metric mt-1 text-lg text-[#f6f1ea]">{formatLkr(todayCents)}</dd>
@@ -130,6 +143,10 @@ export function DashboardHome({
           <div className="bg-white/5 px-4 py-3">
             <dt className="text-[11px] uppercase tracking-[0.14em] text-white/45">Repairs</dt>
             <dd className="metric mt-1 text-lg text-[#f6f1ea]">{formatLkr(repairCents)}</dd>
+          </div>
+          <div className="bg-white/5 px-4 py-3">
+            <dt className="text-[11px] uppercase tracking-[0.14em] text-white/45">Expenses</dt>
+            <dd className="metric mt-1 text-lg text-[#f6f1ea]">{formatLkr(expenseToday.totalCents)}</dd>
           </div>
           <div className="bg-white/5 px-4 py-3">
             <dt className="text-[11px] uppercase tracking-[0.14em] text-white/45">Open jobs</dt>
@@ -141,6 +158,63 @@ export function DashboardHome({
             </dd>
           </div>
         </dl>
+      </motion.section>
+
+      <motion.section variants={sectionReveal}>
+        <SectionHeading
+          icon={Wallet}
+          title="Today's expenses"
+          subtitle={
+            expenseToday.topCategory
+              ? `${expenseToday.count} ${expenseToday.count === 1 ? "expense" : "expenses"} · biggest type is ${expenseToday.topCategory}`
+              : "Nothing spent today"
+          }
+          href="/expenses"
+        />
+        <div className="pos-surface space-y-6 p-5 md:p-6">
+          {expenseToday.totalCents > 0 ? (
+            <>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <article>
+                  <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Spent</p>
+                  <p className="metric mt-1 text-2xl font-semibold">{formatLkr(expenseToday.totalCents)}</p>
+                </article>
+                <article>
+                  <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Number of expenses</p>
+                  <p className="metric mt-1 text-2xl font-semibold">{expenseToday.count}</p>
+                </article>
+                <article>
+                  <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Biggest type</p>
+                  <p className="metric mt-1 text-2xl font-semibold">{expenseToday.topCategory}</p>
+                </article>
+              </div>
+              <ExpenseBreakdown categories={expenseToday.categories} totalCents={expenseToday.totalCents} />
+            </>
+          ) : (
+            <EmptyState title="Nothing was spent today" description="Add an expense and it will show here by type." />
+          )}
+          <div>
+            <p className="mb-3 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Last 7 days</p>
+            <div className="flex h-36 items-end gap-2">
+              {expenseDays.map((day) => {
+                const max = Math.max(...expenseDays.map((item) => item.cents), 1);
+                const height = day.cents > 0 ? Math.max(12, Math.round((day.cents / max) * 96)) : 8;
+                return (
+                  <div key={day.key} className="flex min-w-0 flex-1 flex-col items-center gap-2">
+                    <span className="w-full truncate text-center text-[10px] font-semibold text-muted-foreground">
+                      {day.cents > 0 ? formatLkr(day.cents) : "—"}
+                    </span>
+                    <div
+                      className={`w-full max-w-8 rounded-t-md ${day.isToday ? "bg-brand" : day.cents > 0 ? "bg-[#2a2633]" : "bg-[#e4ddd2]"}`}
+                      style={{ height }}
+                    />
+                    <span className={`text-[10px] ${day.isToday ? "font-semibold text-primary" : "text-muted-foreground"}`}>{day.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       </motion.section>
 
       <motion.section variants={sectionReveal}>

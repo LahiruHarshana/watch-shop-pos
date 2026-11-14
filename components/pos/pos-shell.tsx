@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   LayoutDashboard,
@@ -11,6 +11,7 @@ import {
   Wrench,
   Package,
   Receipt,
+  Wallet,
   BarChart3,
   Settings,
   Tags,
@@ -25,6 +26,7 @@ import {
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { HistoryNav } from "@/components/pos/history-nav";
 import { ShiftBar } from "@/components/pos/shift-bar";
 import { springSoft } from "@/lib/motion/presets";
 import { cn } from "@/lib/utils";
@@ -38,6 +40,7 @@ const groups = [
       { href: "/checkout", label: "Checkout", icon: ShoppingCart, roles: ["admin", "cashier"] },
       { href: "/sales", label: "Sales", icon: Receipt, roles: ["admin", "cashier"] },
       { href: "/repairs", label: "Repairs", icon: Wrench, roles: ["admin", "cashier"] },
+      { href: "/expenses", label: "Expenses", icon: Wallet, roles: ["admin", "cashier"] },
     ],
   },
   {
@@ -220,6 +223,9 @@ export function PosShell({ children }: { children: React.ReactNode }) {
               <NavLinks role={role} pathname={pathname} />
             </SheetContent>
           </Sheet>
+          <Suspense fallback={null}>
+            <HistoryNav />
+          </Suspense>
           <form
             className="relative min-w-0 flex-1"
             onSubmit={(event) => {

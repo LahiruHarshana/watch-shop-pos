@@ -12,6 +12,10 @@ import { Shift } from "../models/Shift";
 import { Sale } from "../models/Sale";
 import { RepairTicket } from "../models/RepairTicket";
 import { StockAdjustment } from "../models/StockAdjustment";
+import { Expense } from "../models/Expense";
+import { ExpenseCategory } from "../models/ExpenseCategory";
+import { ensureDefaultExpenseCategories } from "../lib/expenses/ensure";
+import { addBusinessDays, businessTodayKey } from "../lib/time/business-day";
 
 const SEED_NOTE = "seed";
 
@@ -171,6 +175,7 @@ async function clearSeedTransactionalData() {
   await RepairTicket.deleteMany({ ticketId: /^R-SEED-/ });
   await StockAdjustment.deleteMany({ note: SEED_NOTE });
   await Shift.deleteMany({ notes: SEED_NOTE });
+  await Expense.deleteMany({ note: SEED_NOTE });
 }
 
 async function upsertUsers() {
@@ -641,6 +646,38 @@ async function seedStockAdjustments(
   await strap.save();
 }
 
+async function seedExpenses(adminId: mongoose.Types.ObjectId) {
+  await ensureDefaultExpenseCategories();
+  const categories = await ExpenseCategory.find().select("slug").lean();
+  const bySlug = new Map(categories.map((category) => [category.slug, category._id]));
+  const today = businessTodayKey();
+  const samples = [
+    { slug: "food", daysAgo: 0, amountCents: 185000, description: "Staff lunch" },
+    { slug: "transportation", daysAgo: 0, amountCents: 75000, description: "Bus fare for a delivery" },
+    { slug: "utilities", daysAgo: 1, amountCents: 640000, description: "Electricity bill" },
+    { slug: "supplies", daysAgo: 2, amountCents: 240000, description: "Packaging supplies" },
+    { slug: "maintenance", daysAgo: 3, amountCents: 450000, description: "Counter maintenance" },
+    { slug: "marketing", daysAgo: 4, amountCents: 300000, description: "Instagram advert" },
+    { slug: "transportation", daysAgo: 5, amountCents: 120000, description: "Fuel for the shop bike" },
+    { slug: "food", daysAgo: 6, amountCents: 95000, description: "Tea and snacks" },
+    { slug: "rent", daysAgo: 6, amountCents: 7500000, description: "Shop rent" },
+  ];
+  await Expense.insertMany(
+    samples.flatMap((sample) => {
+      const categoryId = bySlug.get(sample.slug);
+      if (!categoryId) return [];
+      return [{
+        amountCents: sample.amountCents,
+        categoryId,
+        description: sample.description,
+        spentOn: addBusinessDays(today, -sample.daysAgo),
+        note: SEED_NOTE,
+        createdBy: adminId,
+      }];
+    }),
+  );
+}
+
 async function main() {
   if (process.env.NODE_ENV === "production" && process.env.ALLOW_DEMO_SEED !== "true") {
     throw new Error(
@@ -661,6 +698,7 @@ async function main() {
   await seedShiftsAndSales(cashier._id, productsBySku);
   await seedRepairs(admin._id, cashier._id);
   await seedStockAdjustments(admin._id, productsBySku);
+  await seedExpenses(admin._id);
 
   const dateKey = todayKey();
   await Counter.findByIdAndUpdate(
@@ -686,6 +724,7 @@ async function main() {
   console.log("Sales: 8 sample invoices (last 7 days + today on open shift)");
   console.log("Shifts: 1 closed (yesterday) + 1 open (today)");
   console.log("Stock: 2 adjustment records");
+  console.log("Expenses: 8 categories and 9 sample expenses");
   process.exit(0);
 }
 

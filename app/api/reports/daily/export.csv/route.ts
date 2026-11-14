@@ -37,6 +37,10 @@ export async function GET(request: Request) {
     ["Voided sales", report.voidCount],
     ["Voided amount", formatLkr(report.voidCents)],
     ["Drawer variance", report.drawerVarianceCents == null ? "" : formatLkr(report.drawerVarianceCents)],
+    ["Expenses", formatLkr(report.expenseCents)],
+    ["Expense entries", report.expenseCount],
+    ["Net after expenses", formatLkr(report.netCents)],
+    ...report.expenseCategories.map((category) => [`Expense: ${category.name}`, formatLkr(category.amountCents)]),
   ];
   const body = rows.map((row) => row.map(csvEscape).join(",")).join("\n");
   return new Response(body, {

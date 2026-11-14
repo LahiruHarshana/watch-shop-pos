@@ -6,6 +6,7 @@ export const adminOnlyPaths = [
   "/inventory/adjustments",
   "/inventory/categories",
   "/reports",
+  "/expenses/categories",
 ] as const;
 
 export function canAccessPath(role: UserRole, pathname: string): boolean {

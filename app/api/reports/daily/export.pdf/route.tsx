@@ -35,6 +35,9 @@ export async function GET(request: Request) {
     ["Paid repairs", String(report.repairCount)],
     ["Voids", `${report.voidCount} (${formatLkr(report.voidCents)})`],
     ["Drawer variance", report.drawerVarianceCents == null ? "No closed shift" : formatLkr(report.drawerVarianceCents)],
+    ["Expenses", formatLkr(report.expenseCents)],
+    ["Net after expenses", formatLkr(report.netCents)],
+    ...report.expenseCategories.map((category) => [`Expense: ${category.name}`, formatLkr(category.amountCents)] as [string, string]),
   ];
   const buffer = await renderToBuffer(
     <Document>

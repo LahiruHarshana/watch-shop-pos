@@ -1,3 +1,4 @@
+import { loadExpenseWindow } from "@/lib/expenses/load";
 import { businessDayRange } from "@/lib/time/business-day";
 import { RepairTicket } from "@/models/RepairTicket";
 import { Sale } from "@/models/Sale";
@@ -16,17 +17,22 @@ export type DailyReport = {
   repairCount: number;
   paymentBreakdown: Record<string, number>;
   drawerVarianceCents: number | null;
+  expenseCents: number;
+  expenseCount: number;
+  expenseCategories: { name: string; amountCents: number; count: number }[];
+  netCents: number;
 };
 
 export async function buildDailyReport(date: string): Promise<DailyReport> {
   const { start, end } = businessDayRange(date);
   const window = { $gte: start, $lte: end };
 
-  const [sales, voids, repairs, shifts] = await Promise.all([
+  const [sales, voids, repairs, shifts, expenses] = await Promise.all([
     Sale.find({ status: "completed", createdAt: window }).lean(),
     Sale.find({ status: "voided", voidedAt: window }).select("totalCents").lean(),
     RepairTicket.find({ status: "delivered", "payment.paidAt": window }).lean(),
     Shift.find({ status: "closed", closedAt: window }).select("varianceCents").lean(),
+    loadExpenseWindow(date, 1),
   ]);
 
   let retailCents = 0;
@@ -65,5 +71,13 @@ export async function buildDailyReport(date: string): Promise<DailyReport> {
     repairCount: repairs.filter((ticket) => ticket.payment?.amountCents).length,
     paymentBreakdown,
     drawerVarianceCents,
+    expenseCents: expenses.today.totalCents,
+    expenseCount: expenses.today.count,
+    expenseCategories: expenses.today.categories.map((category) => ({
+      name: category.name,
+      amountCents: category.amountCents,
+      count: category.count,
+    })),
+    netCents: retailCents + repairCents - expenses.today.totalCents,
   };
 }

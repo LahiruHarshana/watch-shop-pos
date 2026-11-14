@@ -5,6 +5,7 @@ import { Sale } from "@/models/Sale";
 import { Product } from "@/models/Product";
 import { DashboardHome } from "@/components/pos/dashboard-home";
 import type { RepairStatus } from "@/models/RepairTicket";
+import { loadExpenseWindow } from "@/lib/expenses/load";
 import { addBusinessDays, businessDateKey, businessDayRange, businessTodayKey, businessWeekdayLabel } from "@/lib/time/business-day";
 
 export const instant = false;
@@ -25,10 +26,34 @@ export default async function DashboardPage() {
   const weekStartKey = addBusinessDays(todayKey, -6);
   const weekStart = businessDayRange(weekStartKey).start;
 
-  const weekSales = await Sale.find({
-    status: "completed",
-    createdAt: { $gte: weekStart },
-  }).lean();
+  const { start, end } = businessDayRange(todayKey);
+  const openJobFilter = { status: { $ne: "delivered" as const } };
+  const [weekSales, paidToday, lowStock, expenseWindow, openJobCount, openRepairs] = await Promise.all([
+    Sale.find({
+      status: "completed",
+      createdAt: { $gte: weekStart },
+    }).lean(),
+    RepairTicket.find({
+      status: "delivered",
+      "payment.paidAt": { $gte: start, $lte: end },
+    })
+      .select("payment.amountCents")
+      .lean(),
+    isAdmin
+      ? Product.find({
+          isActive: true,
+          trackInventory: true,
+          $expr: { $lte: ["$quantity", "$lowStockThreshold"] },
+        })
+          .sort({ quantity: 1 })
+          .limit(8)
+          .select("name sku quantity lowStockThreshold")
+          .lean()
+      : Promise.resolve([]),
+    loadExpenseWindow(todayKey, 7),
+    RepairTicket.countDocuments(openJobFilter),
+    RepairTicket.find(openJobFilter).sort({ updatedAt: -1 }).limit(4).lean(),
+  ]);
 
   const buckets = Array.from({ length: 7 }, (_, i) => {
     const key = addBusinessDays(weekStartKey, i);
@@ -44,32 +69,7 @@ export default async function DashboardPage() {
   const maxCents = Math.max(...buckets.map((b) => b.cents), 1);
   const todayCents = buckets.find((b) => b.key === todayKey)?.cents ?? 0;
   const weekTotalCents = buckets.reduce((sum, b) => sum + b.cents, 0);
-  const { start, end } = businessDayRange(todayKey);
-  const paidToday = await RepairTicket.find({
-    status: "delivered",
-    "payment.paidAt": { $gte: start, $lte: end },
-  })
-    .select("payment.amountCents")
-    .lean();
   const repairCents = paidToday.reduce((sum, ticket) => sum + (ticket.payment?.amountCents ?? 0), 0);
-
-  const lowStock = isAdmin
-    ? await Product.find({
-        isActive: true,
-        trackInventory: true,
-        $expr: { $lte: ["$quantity", "$lowStockThreshold"] },
-      })
-        .sort({ quantity: 1 })
-        .limit(8)
-        .select("name sku quantity lowStockThreshold")
-        .lean()
-    : [];
-
-  const openJobFilter = { status: { $ne: "delivered" as const } };
-  const [openJobCount, openRepairs] = await Promise.all([
-    RepairTicket.countDocuments(openJobFilter),
-    RepairTicket.find(openJobFilter).sort({ updatedAt: -1 }).limit(4).lean(),
-  ]);
 
   return (
     <DashboardHome
@@ -95,6 +95,21 @@ export default async function DashboardPage() {
         estimatedCostCents: t.estimatedCostCents,
       }))}
       shortcuts={shortcuts}
+      expenseToday={{
+        totalCents: expenseWindow.today.totalCents,
+        count: expenseWindow.today.count,
+        topCategory: expenseWindow.today.topCategory?.name ?? null,
+        categories: expenseWindow.today.categories.map((category) => ({
+          name: category.name,
+          amountCents: category.amountCents,
+        })),
+      }}
+      expenseDays={expenseWindow.days.map((day) => ({
+        label: businessWeekdayLabel(day.date),
+        cents: day.totalCents,
+        key: day.date,
+        isToday: day.date === todayKey,
+      }))}
       lowStock={lowStock.map((p) => ({
         id: String(p._id),
         name: p.name,

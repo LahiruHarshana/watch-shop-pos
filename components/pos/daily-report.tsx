@@ -10,7 +10,9 @@ import {
   ShoppingBag,
   Wrench,
   TrendingUp,
+  Wallet,
 } from "lucide-react";
+import { ExpenseBreakdown } from "@/components/pos/expense-breakdown";
 import { formatLkr } from "@/lib/money/format";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -25,6 +27,10 @@ type Report = {
   voidCount?: number;
   drawerVarianceCents?: number | null;
   paymentBreakdown?: Record<string, number>;
+  expenseCents?: number;
+  expenseCount?: number;
+  expenseCategories?: { name: string; amountCents: number; count: number }[];
+  netCents?: number;
 };
 
 const paymentMeta: Record<string, { label: string; icon: typeof Banknote; color: string }> = {
@@ -163,7 +169,7 @@ export function DailyReport({ initialDate }: { initialDate: string }) {
             </div>
           </motion.div>
 
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid gap-4 lg:grid-cols-4">
             <MetricCard
               title="Retail"
               value={formatLkr(report.retailCents)}
@@ -185,17 +191,40 @@ export function DailyReport({ initialDate }: { initialDate: string }) {
               instant={instant}
             />
             <MetricCard
-              title="Total"
-              value={formatLkr(report.totalCents)}
-              sub="Combined revenue"
+              title="Expenses"
+              value={formatLkr(report.expenseCents ?? 0)}
+              sub={`${report.expenseCount ?? 0} ${(report.expenseCount ?? 0) === 1 ? "entry" : "entries"}`}
+              icon={Wallet}
+              accent="from-amber-500/15 to-orange-500/10"
+              iconClass="text-amber-700"
+              index={2}
+              instant={instant}
+            />
+            <MetricCard
+              title="Net"
+              value={formatLkr(report.netCents ?? report.totalCents)}
+              sub="Revenue minus expenses"
               icon={TrendingUp}
               accent="from-primary/20 via-violet-500/10 to-transparent"
               iconClass="text-primary"
               highlight
-              index={2}
+              index={3}
               instant={instant}
             />
           </div>
+
+          {(report.expenseCategories?.length ?? 0) > 0 && (
+            <section className="pos-surface p-5">
+              <h2 className="mb-4 font-semibold tracking-tight">Expenses by category</h2>
+              <ExpenseBreakdown
+                totalCents={report.expenseCents ?? 0}
+                categories={(report.expenseCategories ?? []).map((category) => ({
+                  name: category.name,
+                  amountCents: category.amountCents,
+                }))}
+              />
+            </section>
+          )}
 
           {payments.length > 0 && (
             <motion.section
