@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { parseLkrInput } from "@/lib/money/format";
 import { customerNameError } from "@/lib/repairs/customer-name";
 import { estimatedCostInputError } from "@/lib/repairs/estimated-cost";
+import { issueDescriptionError } from "@/lib/repairs/issue-description";
 import { phoneError } from "@/lib/repairs/phone";
 import { watchTextError } from "@/lib/repairs/watch-text";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,7 @@ export function RepairForm() {
   const [phoneFieldError, setPhoneFieldError] = useState<string | null>(null);
   const [brandError, setBrandError] = useState<string | null>(null);
   const [modelError, setModelError] = useState<string | null>(null);
+  const [issueError, setIssueError] = useState<string | null>(null);
   const [form, setForm] = useState({
     customerName: "",
     customerPhone: "",
@@ -43,40 +45,22 @@ export function RepairForm() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const invalidName = customerNameError(form.customerName);
-    if (invalidName) {
-      setNameError(invalidName);
-      toast.error(invalidName);
-      return;
-    }
     const invalidPhone = phoneError(form.customerPhone);
-    if (invalidPhone) {
-      setPhoneFieldError(invalidPhone);
-      toast.error(invalidPhone);
-      return;
-    }
     const invalidBrand = watchTextError(form.watchBrand, "watch brand");
-    if (invalidBrand) {
-      setBrandError(invalidBrand);
-      toast.error(invalidBrand);
-      return;
-    }
     const invalidModel = watchTextError(form.watchModel, "model");
-    if (invalidModel) {
-      setModelError(invalidModel);
-      toast.error(invalidModel);
-      return;
-    }
+    const invalidIssue = issueDescriptionError(form.issueDescription);
     const invalidCost = estimatedCostInputError(form.estimatedCost);
-    if (invalidCost) {
-      setCostError(invalidCost);
-      toast.error(invalidCost);
+    setNameError(invalidName);
+    setPhoneFieldError(invalidPhone);
+    setBrandError(invalidBrand);
+    setModelError(invalidModel);
+    setIssueError(invalidIssue);
+    setCostError(invalidCost);
+    const firstError = invalidName || invalidPhone || invalidBrand || invalidModel || invalidIssue || invalidCost;
+    if (firstError) {
+      toast.error("Check the highlighted fields.");
       return;
     }
-    setNameError(null);
-    setPhoneFieldError(null);
-    setBrandError(null);
-    setModelError(null);
-    setCostError(null);
     setLoading(true);
     const res = await fetch("/api/repairs", {
       method: "POST",
@@ -182,11 +166,16 @@ export function RepairForm() {
               <Textarea
                 required
                 rows={4}
+                aria-invalid={issueError ? true : undefined}
                 placeholder="What the customer reported — stopped, loose crown, battery, crystal…"
                 className={cn(fieldClass, "min-h-28 py-3")}
                 value={form.issueDescription}
-                onChange={(e) => set("issueDescription", e.target.value)}
+                onChange={(e) => {
+                  set("issueDescription", e.target.value);
+                  if (issueError) setIssueError(issueDescriptionError(e.target.value));
+                }}
               />
+              {issueError ? <p className="text-sm text-destructive">{issueError}</p> : null}
             </Field>
             <Field label="Estimated cost (LKR)" icon={Banknote} className="sm:col-span-2">
               <Input

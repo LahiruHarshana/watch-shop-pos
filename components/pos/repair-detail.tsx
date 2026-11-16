@@ -16,7 +16,9 @@ import {
 import { statusLabels, statusPillClass } from "@/lib/repairs/status-style";
 import type { RepairStatus } from "@/lib/repairs/transitions";
 import { formatLkr } from "@/lib/money/format";
+import { customerNameError } from "@/lib/repairs/customer-name";
 import { estimatedCostInputError } from "@/lib/repairs/estimated-cost";
+import { issueDescriptionError } from "@/lib/repairs/issue-description";
 import { phoneError } from "@/lib/repairs/phone";
 import { watchTextError } from "@/lib/repairs/watch-text";
 import { Button } from "@/components/ui/button";
@@ -103,6 +105,11 @@ export function RepairDetail({ ticket }: { ticket: Ticket }) {
 
   async function saveIntake(event: React.FormEvent) {
     event.preventDefault();
+    const invalidName = customerNameError(draft.customerName);
+    if (invalidName) {
+      toast.error(invalidName);
+      return;
+    }
     const invalidBrand = watchTextError(draft.watchBrand, "watch brand");
     if (invalidBrand) {
       toast.error(invalidBrand);
@@ -111,6 +118,11 @@ export function RepairDetail({ ticket }: { ticket: Ticket }) {
     const invalidModel = watchTextError(draft.watchModel, "model");
     if (invalidModel) {
       toast.error(invalidModel);
+      return;
+    }
+    const invalidIssue = issueDescriptionError(draft.issueDescription);
+    if (invalidIssue) {
+      toast.error(invalidIssue);
       return;
     }
     const invalidPhone = phoneError(draft.customerPhone);

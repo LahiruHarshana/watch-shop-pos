@@ -7,6 +7,7 @@ import { RepairTicket } from "@/models/RepairTicket";
 import { businessDayRange } from "@/lib/time/business-day";
 import { customerNameError, normalizeCustomerName } from "@/lib/repairs/customer-name";
 import { estimatedCostCentsError } from "@/lib/repairs/estimated-cost";
+import { issueDescriptionError, normalizeIssueDescription } from "@/lib/repairs/issue-description";
 import { normalizeSriLankaPhone, phoneError } from "@/lib/repairs/phone";
 import { normalizeWatchText, watchTextError } from "@/lib/repairs/watch-text";
 
@@ -90,11 +91,14 @@ export async function POST(request: Request) {
   if (brandError) return jsonError("VALIDATION", brandError, 400);
   const modelError = watchTextError(body.watchModel, "model");
   if (modelError) return jsonError("VALIDATION", modelError, 400);
+  const issueError = issueDescriptionError(body.issueDescription);
+  if (issueError) return jsonError("VALIDATION", issueError, 400);
   const customerName = normalizeCustomerName(body.customerName);
   const customerPhone = normalizeSriLankaPhone(body.customerPhone);
   const watchBrand = normalizeWatchText(body.watchBrand, "watch brand");
   const watchModel = normalizeWatchText(body.watchModel, "model");
-  if (!customerName || !customerPhone || !watchBrand || !watchModel) {
+  const issueDescription = normalizeIssueDescription(body.issueDescription);
+  if (!customerName || !customerPhone || !watchBrand || !watchModel || !issueDescription) {
     return jsonError("VALIDATION", "Invalid repair details", 400);
   }
   const ticketId = await generateRepairTicketId();
@@ -104,7 +108,7 @@ export async function POST(request: Request) {
     customerPhone,
     watchBrand,
     watchModel,
-    issueDescription: body.issueDescription,
+    issueDescription,
     estimatedCostCents: body.estimatedCostCents,
     intakePhotoUrl: body.intakePhotoUrl,
     createdBy: user!.id,

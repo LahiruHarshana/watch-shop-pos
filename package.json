@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test lib/api/pagination.test.ts lib/money/calculate-sale.test.ts lib/time/business-day.test.ts lib/shifts/expected-cash.test.ts lib/expenses/summary.test.ts",
+    "test": "tsx --test lib/api/pagination.test.ts lib/money/calculate-sale.test.ts lib/time/business-day.test.ts lib/shifts/expected-cash.test.ts lib/expenses/summary.test.ts lib/repairs/intake.test.ts",
     "test:e2e": "playwright test",
     "seed": "tsx --env-file=.env.local scripts/seed.ts"
   },

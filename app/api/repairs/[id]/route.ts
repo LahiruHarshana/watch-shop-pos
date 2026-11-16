@@ -6,6 +6,7 @@ import { canTransition } from "@/lib/repairs/transitions";
 import { RepairTicket, type RepairStatus } from "@/models/RepairTicket";
 import { customerNameError, normalizeCustomerName } from "@/lib/repairs/customer-name";
 import { estimatedCostCentsError } from "@/lib/repairs/estimated-cost";
+import { issueDescriptionError, normalizeIssueDescription } from "@/lib/repairs/issue-description";
 import { normalizeSriLankaPhone, phoneError } from "@/lib/repairs/phone";
 import { normalizeWatchText, watchTextError } from "@/lib/repairs/watch-text";
 
@@ -97,6 +98,11 @@ export async function PATCH(
       const invalidPhone = phoneError(body.customerPhone);
       if (invalidPhone) return jsonError("VALIDATION", invalidPhone, 400);
       body.customerPhone = normalizeSriLankaPhone(body.customerPhone);
+    }
+    if ("issueDescription" in body) {
+      const issueError = issueDescriptionError(body.issueDescription);
+      if (issueError) return jsonError("VALIDATION", issueError, 400);
+      body.issueDescription = normalizeIssueDescription(body.issueDescription);
     }
     if ("estimatedCostCents" in body) {
       const costError = estimatedCostCentsError(body.estimatedCostCents);
