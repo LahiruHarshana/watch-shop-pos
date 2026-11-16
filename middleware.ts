@@ -1,16 +1,15 @@
 import NextAuth from "next-auth";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextFetchEvent, type NextMiddleware, type NextRequest } from "next/server";
 import { authConfig } from "@/lib/auth/auth.config";
 import { canAccessPath } from "@/lib/rbac/permissions";
 
 const { auth } = NextAuth(authConfig);
 
-export default auth((req) => {
+const guarded = auth((req) => {
   const { pathname } = req.nextUrl;
   const isLogin = pathname.startsWith("/login");
-  const isApiAuth = pathname.startsWith("/api/auth");
   const isHealth = pathname === "/api/health";
-  const isPublic = isLogin || isApiAuth || isHealth;
+  const isPublic = isLogin || isHealth;
 
   if (!req.auth && !isPublic && (pathname.startsWith("/api") || !pathname.startsWith("/_next"))) {
     if (pathname.startsWith("/api")) {
@@ -33,7 +32,17 @@ export default auth((req) => {
   }
 
   return NextResponse.next();
-});
+}) as unknown as NextMiddleware;
+
+export default function middleware(request: NextRequest, event: NextFetchEvent) {
+  // Auth.js reads the JWT while handling these routes and attaches a fresh
+  // session cookie to the middleware response. On sign-out that cookie is
+  // written after the expired cookie, so the browser stays signed in.
+  if (request.nextUrl.pathname.startsWith("/api/auth")) {
+    return NextResponse.next();
+  }
+  return guarded(request, event);
+}
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
