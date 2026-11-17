@@ -1,10 +1,10 @@
-# Watch Shop POS — System User Guide
+# LUMINA — System User Guide
 
 **Retail and repair point of sale**
 
-This guide explains every screen, control, and day-to-day job in Watch Shop POS. After you read the chapter for a task, you should be able to do that task on your own.
+This guide explains every screen, control, and day-to-day job in LUMINA. After you read the chapter for a task, you should be able to do that task on your own.
 
-The pictures were taken from the running shop (the seeded Premier Watch House sample). Your shop name, prices, and numbers will be your own. The buttons and the order of work are the same.
+The pictures were taken from the running shop. Prices and counts in the pictures are sample data. The shop name on screen is **LUMINA**.
 
 Installing the shop computer is covered in [SHOP-PC-DEPLOYMENT.md](SHOP-PC-DEPLOYMENT.md). This book is for the people who use the system after it is running.
 
@@ -37,7 +37,7 @@ Installing the shop computer is covered in [SHOP-PC-DEPLOYMENT.md](SHOP-PC-DEPLO
 
 ## 1. What this system does
 
-Watch Shop POS is the counter system for a watch shop that both **sells** goods and **repairs** watches.
+LUMINA is the counter system for this watch shop. It both **sells** goods and **repairs** watches.
 
 It keeps five kinds of work in one place:
 
@@ -132,7 +132,7 @@ Open the shop address in the browser. If you are not signed in, you land on the 
 
 ### What you see
 
-The left panel is the shop brand: **Watch POS**, **Retail & Repair Management**, and the line **Precision at every sale.** It lists Retail sales, Repairs, Inventory, and Payments.
+The left panel is the shop brand: **LUMINA**, **Retail & Repair Management**, and the line **Precision at every sale.** It lists Retail sales, Repairs, Inventory, and Payments.
 
 The form on the right:
 
@@ -223,7 +223,7 @@ At the bottom of the menu:
 
 | Control | What it does |
 |---|---|
-| Back | Goes to the previous Watch POS page you opened, the same way a browser Back button does. It is disabled on the first page of the session. |
+| Back | Goes to the previous LUMINA page you opened, the same way a browser Back button does. It is disabled on the first page of the session. |
 | Forward | Returns to a page you left with Back. |
 | Search products | Finds a product and opens Checkout with that search. You can also press **⌘K** on a Mac or **Ctrl+K** on Windows to jump into this box. |
 | Shift button | Opens or closes the cash drawer. See [Chapter 6](#6-the-cash-drawer-shift). On a narrow screen it sits under the page instead of in the top bar. |

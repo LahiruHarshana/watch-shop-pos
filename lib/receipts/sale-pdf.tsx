@@ -1,5 +1,6 @@
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import { formatLkr } from "@/lib/money/format";
+import { SHOP_NAME } from "@/lib/settings/shop-profile";
 
 const styles = StyleSheet.create({
   page: { padding: 16, fontSize: 9, fontFamily: "Helvetica", color: "#111" },
@@ -48,7 +49,7 @@ export function SaleReceiptDocument({
   return (
     <Document>
       <Page size={[width, 720]} style={styles.page}>
-        <Text style={styles.title}>{settings.shopName ?? "Watch Shop"}</Text>
+        <Text style={styles.title}>{settings.shopName ?? SHOP_NAME}</Text>
         {settings.address ? <Text style={styles.center}>{settings.address}</Text> : null}
         {settings.phone ? <Text style={styles.center}>{settings.phone}</Text> : null}
         <View style={styles.rule} />

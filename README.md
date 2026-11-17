@@ -1,4 +1,4 @@
-# Watch Shop POS
+# LUMINA
 
 Next.js monolith POS for watch retail and repair (MVP Phase One).
 

@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select";
 import { readResponseJson } from "@/lib/api/read-response-json";
 import { phoneError } from "@/lib/repairs/phone";
-import { shopAddressError, shopEmailError, shopNameError } from "@/lib/settings/shop-profile";
+import { SHOP_NAME, shopAddressError, shopEmailError, shopNameError } from "@/lib/settings/shop-profile";
 import { toast } from "sonner";
 
 type SettingsData = {
@@ -319,7 +319,7 @@ export function SettingsForm() {
               </Label>
               <div className="rounded-2xl bg-muted/50 p-4 text-xs text-muted-foreground">
                 <p className="font-medium text-foreground">Preview on receipt</p>
-                <p className="mt-2 font-semibold">{form.shopName || "Your shop name"}</p>
+                <p className="mt-2 font-semibold">{form.shopName || SHOP_NAME}</p>
                 <p className="mt-1">{form.address || "Address line"}</p>
                 <p>{form.phone || "Phone"}</p>
                 <p className="mt-3 border-t border-border/60 pt-3 italic">

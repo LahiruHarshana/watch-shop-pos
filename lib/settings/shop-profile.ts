@@ -1,5 +1,7 @@
 import { normalizeSriLankaPhone, phoneError } from "@/lib/repairs/phone";
 
+export const SHOP_NAME = "LUMINA";
+
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function shopNameError(value: unknown): string | null {

@@ -1,8 +1,9 @@
 import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
+import { SHOP_NAME } from "@/lib/settings/shop-profile";
 
 const ShopSettingsSchema = new Schema({
   _id: { type: String, default: "shop" },
-  shopName: { type: String, default: "Watch Shop" },
+  shopName: { type: String, default: SHOP_NAME },
   address: { type: String, default: "" },
   phone: { type: String, default: "" },
   email: { type: String, default: "" },
@@ -10,7 +11,7 @@ const ShopSettingsSchema = new Schema({
   logoCloudinaryId: { type: String },
   receiptThankYouNote: {
     type: String,
-    default: "Thank you for your purchase. We appreciate your business.",
+    default: "Thank you for choosing LUMINA.",
   },
   repairTermsAndConditions: {
     type: String,

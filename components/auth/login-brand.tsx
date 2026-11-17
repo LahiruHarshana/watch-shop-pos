@@ -39,7 +39,7 @@ export function LoginBrand() {
             <Watch className="size-5" />
           </span>
           <div>
-            <p className="text-sm font-semibold tracking-tight">Watch POS</p>
+            <p className="text-sm font-semibold tracking-tight">LUMINA</p>
             <p className="text-xs text-white/60">Retail & Repair Management</p>
           </div>
         </div>

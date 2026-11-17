@@ -161,12 +161,12 @@ export function PosShell({ children }: { children: React.ReactNode }) {
         className="sticky top-0 hidden h-screen shrink-0 flex-col border-r border-white/8 bg-[#141218] px-3 py-4 text-[#f6f1ea] lg:flex"
       >
         <div className={cn("mb-6 flex items-center gap-2.5 px-1", collapsed && "justify-center")}>
-          <Link href="/dashboard" className="flex size-9 items-center justify-center rounded-xl bg-[#f6f1ea] text-[#141218]" title="Watch POS">
+          <Link href="/dashboard" className="flex size-9 items-center justify-center rounded-xl bg-[#f6f1ea] text-[#141218]" title="LUMINA">
             <Watch className="size-4" />
           </Link>
           {!collapsed && (
             <span>
-              <span className="block text-sm font-semibold tracking-tight">Watch POS</span>
+              <span className="block text-sm font-semibold tracking-tight">LUMINA</span>
               <span className="block text-[10px] tracking-[0.14em] text-white/40 uppercase">Retail & repair</span>
             </span>
           )}
@@ -218,7 +218,7 @@ export function PosShell({ children }: { children: React.ReactNode }) {
             <SheetContent side="left" className="w-72 border-white/10 bg-[#141218] text-[#f6f1ea]">
               <div className="mb-6 flex items-center gap-2 text-sm font-semibold">
                 <Watch className="size-4" />
-                Watch POS
+                LUMINA
               </div>
               <NavLinks role={role} pathname={pathname} />
             </SheetContent>

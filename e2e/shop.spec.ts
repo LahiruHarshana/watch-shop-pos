@@ -151,7 +151,7 @@ test("shop flows work on the configured database", async ({ page, browser }) => 
   );
   await page.goto("/settings");
   const shopName = page.getByText("Shop name", { exact: true }).locator("xpath=following::input[1]");
-  await expect(shopName).toHaveValue("Premier Watch House");
+  await expect(shopName).toHaveValue("LUMINA");
   await shopName.fill("E2E Shop");
   await page.getByRole("button", { name: "Save settings" }).click();
   expect((await settingsResponse).ok()).toBeTruthy();
@@ -159,7 +159,7 @@ test("shop flows work on the configured database", async ({ page, browser }) => 
   const restoreResponse = page.waitForResponse(
     (response) => response.url().includes("/api/settings") && response.request().method() === "PATCH",
   );
-  await shopName.fill("Premier Watch House");
+  await shopName.fill("LUMINA");
   await page.getByRole("button", { name: "Save settings" }).click();
   expect((await restoreResponse).ok()).toBeTruthy();
 

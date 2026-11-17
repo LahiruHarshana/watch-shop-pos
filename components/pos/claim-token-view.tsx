@@ -1,6 +1,7 @@
 "use client";
 
 import { formatLkr } from "@/lib/money/format";
+import { SHOP_NAME } from "@/lib/settings/shop-profile";
 import { Button } from "@/components/ui/button";
 
 export function ClaimTokenView({
@@ -38,7 +39,7 @@ export function ClaimTokenView({
         className="mx-auto overflow-hidden bg-white p-3 text-[11px] leading-snug text-black"
         style={{ maxWidth: width }}
       >
-        <h2 className="break-words text-center text-sm font-bold">{settings.shopName ?? "Watch Shop"}</h2>
+        <h2 className="break-words text-center text-sm font-bold">{settings.shopName ?? SHOP_NAME}</h2>
         {settings.address && <p className="break-words text-center text-[10px]">{settings.address}</p>}
         {settings.phone && <p className="text-center text-[10px]">{settings.phone}</p>}
         <h3 className="mt-3 text-center text-xs font-semibold uppercase tracking-wide">Repair claim token</h3>

@@ -17,8 +17,8 @@ const display = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "Watch Shop POS",
-  description: "Point of sale for watch repair and retail",
+  title: "LUMINA",
+  description: "Point of sale for LUMINA watch repair and retail",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

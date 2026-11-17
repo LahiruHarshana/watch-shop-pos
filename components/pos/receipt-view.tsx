@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { formatLkr } from "@/lib/money/format";
+import { SHOP_NAME } from "@/lib/settings/shop-profile";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -136,7 +137,7 @@ export function ReceiptView({ sale, settings }: { sale: Sale; settings: Settings
           // eslint-disable-next-line @next/next/no-img-element
           <img src={settings.logoUrl} alt="" className="mx-auto mb-2 h-12 object-contain" />
         )}
-        <h2 className="text-center text-sm font-bold">{settings.shopName ?? "Watch Shop"}</h2>
+        <h2 className="text-center text-sm font-bold">{settings.shopName ?? SHOP_NAME}</h2>
         <p className="text-center text-xs">{settings.address}</p>
         <p className="text-center text-xs">{settings.phone}</p>
         <hr className="my-2 border-dashed border-black/30" />

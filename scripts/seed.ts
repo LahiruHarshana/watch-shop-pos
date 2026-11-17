@@ -15,6 +15,7 @@ import { StockAdjustment } from "../models/StockAdjustment";
 import { Expense } from "../models/Expense";
 import { ExpenseCategory } from "../models/ExpenseCategory";
 import { ensureDefaultExpenseCategories } from "../lib/expenses/ensure";
+import { SHOP_NAME } from "../lib/settings/shop-profile";
 import { addBusinessDays, businessTodayKey } from "../lib/time/business-day";
 
 const SEED_NOTE = "seed";
@@ -225,11 +226,11 @@ async function upsertCatalog() {
   await ShopSettings.findByIdAndUpdate(
     "shop",
     {
-      shopName: "Premier Watch House",
+      shopName: SHOP_NAME,
       address: "42 Galle Road, Colombo 03, Sri Lanka",
       phone: "+94 11 234 5678",
       email: "hello@premierwatch.local",
-      receiptThankYouNote: "Thank you for choosing Premier Watch House.",
+      receiptThankYouNote: `Thank you for choosing ${SHOP_NAME}.`,
       repairTermsAndConditions:
         "Unclaimed repairs after 60 days may incur storage fees. We are not responsible for water damage not disclosed at intake.",
       defaultLowStockThreshold: 10,

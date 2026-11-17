@@ -87,7 +87,7 @@ export function LoginForm() {
           <div>
             <h2 className="text-[1.7rem] font-semibold tracking-tight text-foreground">Welcome back</h2>
             <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-              Sign in to continue to your Watch POS workspace.
+              Sign in to continue to your LUMINA workspace.
             </p>
           </div>
 
@@ -180,7 +180,7 @@ export function LoginForm() {
           </motion.button>
         </div>
       </form>
-      <p className="mt-6 text-center text-xs text-muted-foreground">Watch POS • Retail & Repair Management</p>
+      <p className="mt-6 text-center text-xs text-muted-foreground">LUMINA • Retail & Repair Management</p>
     </motion.div>
   );
 }
